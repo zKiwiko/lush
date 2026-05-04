@@ -1,5 +1,7 @@
 /target
-lush.lua
+
+*.lua
 *.c
 *.cpp
 *.go
+*.sh

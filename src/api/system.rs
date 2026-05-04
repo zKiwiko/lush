@@ -177,3 +177,23 @@ pub fn envs() -> LuaResult<mlua::Table> {
     }
     Ok(env_table)
 }
+
+pub fn grep(pattern: String, text: String) -> LuaResult<mlua::Table> {
+    let regex = match regex::Regex::new(&pattern) {
+        Ok(r) => r,
+        Err(err) => {
+            return Err(mlua::Error::RuntimeError(format!(
+                "Invalid regex pattern: {}",
+                err
+            )));
+        }
+    };
+
+    let result_table: mlua::Table = mlua::Lua::new().create_table()?;
+    for (i, line) in text.lines().enumerate() {
+        if regex.is_match(line) {
+            result_table.set(i + 1, line.to_string())?;
+        }
+    }
+    Ok(result_table)
+}

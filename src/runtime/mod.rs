@@ -195,7 +195,9 @@ impl Runtime {
                 "envs"   => |_, ()| system::envs(),
                 "os"    => |_, ()| system::os(),
                 "arch"  => |_, ()| system::arch(),
-                "which" => |_, command: String| system::which(command)
+                "which" => |_, command: String| system::which(command),
+                "grep"  => |_, (pattern, text): (String, String)| system::grep(pattern, text),
+                "popen" => |_, command: String| system::popen(command),
             );
 
             regv!(sys_module, self.lua,
