@@ -1,70 +1,130 @@
 use mlua::prelude::*;
 
-pub fn load(lua: &Lua) -> LuaResult<()> {
-    if let Ok(lush_module) = lua.create_table() {
-        // register_command(name, handler) or register_command(name, alias, handler)
-        let register_cmd = lua.create_function(|lua, args: mlua::Variadic<mlua::Value>| {
-            if args.len() < 2 {
-                return Err(mlua::Error::RuntimeError(
-                    "expected (name, handler) or (name, alias, handler)".into(),
-                ));
-            }
+fn parse_depends(_lua: &Lua, opts: &mlua::Table) -> LuaResult<Vec<String>> {
+    // Check if it's just an array of dependencies: {"dep1", "dep2"}
+    // Or a table with depends key: {depends = "dep1"} or {depends = {"dep1", "dep2"}}
 
-            // first arg: name
-            let name = match &args[0] {
-                mlua::Value::String(s) => s.to_str()?.to_owned(),
+    // First check if it has numeric keys (is it an array?)
+    if let Ok(mlua::Value::String(_)) = opts.get::<mlua::Value>(1) {
+        // It's an array of strings
+        let mut deps = vec![];
+        let mut i = 1;
+        loop {
+            match opts.get::<mlua::Value>(i)? {
+                mlua::Value::String(s) => {
+                    deps.push(s.to_str()?.to_owned());
+                    i += 1;
+                }
+                mlua::Value::Nil => break,
                 _ => {
-                    return Err(mlua::Error::RuntimeError(
-                        "first argument must be a string".into(),
+                    return Err(LuaError::RuntimeError(
+                        "dependencies must be strings".into(),
                     ));
                 }
-            };
-
-            // determine alias + handler
-            let (alias_opt, handler_val) = if args.len() == 2 {
-                (None, &args[1])
-            } else {
-                let alias = match &args[1] {
-                    mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-                    _ => {
-                        return Err(mlua::Error::RuntimeError("alias must be a string".into()));
-                    }
-                };
-                (alias, &args[2])
-            };
-
-            // ensure handler is function
-            let func = match handler_val {
-                mlua::Value::Function(f) => f.clone(),
-                _ => {
-                    return Err(mlua::Error::RuntimeError(
-                        "handler must be a function".into(),
-                    ));
-                }
-            };
-
-            // get or create the commands table
-            let globals = lua.globals();
-            let cmds = match globals.get::<mlua::Table>("lush_commands") {
-                Ok(t) => t,
-                Err(_) => {
-                    let t = lua.create_table()?;
-                    globals.set("lush_commands", t.clone())?;
-                    t
-                }
-            };
-
-            cmds.set(name, func.clone())?;
-            if let Some(alias_name) = alias_opt {
-                cmds.set(alias_name, func)?;
             }
-
-            Ok(())
-        })?;
-
-        lush_module.set("register", register_cmd)?;
-        lua.globals().set("lush", lush_module)?;
+        }
+        return Ok(deps);
     }
+
+    // Otherwise check for depends key
+    match opts.get::<mlua::Value>("depends")? {
+        mlua::Value::String(s) => Ok(vec![s.to_str()?.to_owned()]),
+        mlua::Value::Table(t) => {
+            let mut deps = vec![];
+            let mut i = 1;
+            loop {
+                match t.get::<mlua::Value>(i)? {
+                    mlua::Value::String(s) => {
+                        deps.push(s.to_str()?.to_owned());
+                        i += 1;
+                    }
+                    mlua::Value::Nil => break,
+                    _ => {
+                        return Err(LuaError::RuntimeError(
+                            "depends must be a string or array of strings".into(),
+                        ));
+                    }
+                }
+            }
+            Ok(deps)
+        }
+        mlua::Value::Nil => Ok(vec![]),
+        _ => Err(LuaError::RuntimeError(
+            "depends must be a string or array of strings".into(),
+        )),
+    }
+}
+
+fn task(lua: &Lua, args: mlua::Variadic<mlua::Value>) -> LuaResult<()> {
+    if args.is_empty() {
+        return Err(LuaError::RuntimeError(
+            "task() requires at least a name and handler".into(),
+        ));
+    }
+
+    let name = match &args[0] {
+        mlua::Value::String(s) => s.to_str()?.to_owned(),
+        _ => return Err(LuaError::RuntimeError("task name must be a string".into())),
+    };
+
+    let (depends, handler) = if args.len() == 2 {
+        (vec![], &args[1])
+    } else if args.len() == 3 {
+        let opts = match &args[1] {
+            mlua::Value::Table(t) => t,
+            _ => return Err(LuaError::RuntimeError("options must be a table".into())),
+        };
+        let deps = parse_depends(lua, opts)?;
+        (deps, &args[2])
+    } else {
+        return Err(LuaError::RuntimeError(
+            "task() takes 2 or 3 arguments: name, [opts], handler".into(),
+        ));
+    };
+
+    let func = match handler {
+        mlua::Value::Function(f) => f.clone(),
+        _ => return Err(LuaError::RuntimeError("handler must be a function".into())),
+    };
+
+    let task_registry = lua.named_registry_value::<mlua::Table>("lush_tasks")?;
+    let task_table = lua.create_table()?;
+    task_table.set("name", name.clone())?;
+    task_table.set("handler", func)?;
+
+    let depends_table = lua.create_table()?;
+    for (i, dep) in depends.iter().enumerate() {
+        depends_table.set(i + 1, dep.clone())?;
+    }
+    task_table.set("depends", depends_table)?;
+
+    task_registry.set(name, task_table)?;
+
+    Ok(())
+}
+
+fn rule(_lua: &Lua, (_output, _input, _handler): (String, String, LuaFunction)) -> LuaResult<()> {
+    // TODO: Implement rules if needed
+    Ok(())
+}
+
+fn target(_lua: &Lua, (_files, _opts): (mlua::Value, Option<mlua::Table>)) -> LuaResult<()> {
+    // TODO: Implement targets if needed
+    Ok(())
+}
+
+pub fn load(lua: &Lua) -> LuaResult<()> {
+    // Initialize task registry in Lua registry
+    let task_registry = lua.create_table()?;
+    lua.set_named_registry_value("lush_tasks", task_registry)?;
+
+    let lush_module = lua.create_table()?;
+
+    lush_module.set("task", lua.create_function(task)?)?;
+    lush_module.set("rule", lua.create_function(rule)?)?;
+    lush_module.set("target", lua.create_function(target)?)?;
+
+    lua.globals().set("lush", lush_module)?;
 
     Ok(())
 }

@@ -1,1 +1,5 @@
 /target
+lush.lua
+*.c
+*.cpp
+*.go
