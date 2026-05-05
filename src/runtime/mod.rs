@@ -3,7 +3,7 @@ use mlua::prelude::*;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::api::{json, system};
+use crate::api::{build, json, system};
 
 const LUSH_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -243,5 +243,8 @@ impl Runtime {
 
         // lush module
         let _ = crate::api::lush::load(&self.lua);
+
+        // build module
+        let _ = build::register(&self.lua);
     }
 }

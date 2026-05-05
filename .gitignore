@@ -6,3 +6,4 @@
 *.go
 *.sh
 *.json
+test*
