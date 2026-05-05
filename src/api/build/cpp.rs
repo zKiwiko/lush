@@ -2,6 +2,9 @@ use super::common::{
     Compiler, execute_build, expand_glob_patterns, find_library, result_to_lua_table,
     table_to_strings,
 };
+use super::generators::{
+    BuildSystem, GeneratorConfig, execute_cmake, execute_meson, generate_cmake, generate_meson,
+};
 use mlua::prelude::*;
 
 /// Initialize C++-specific constants
@@ -57,6 +60,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     table.set("_optimize", mlua::Value::Nil)?;
     table.set("_debug", false)?;
     table.set("_warnings", mlua::Value::Nil)?;
+    table.set("_build_system", "raw")?;
 
     let metatable = lua.create_table()?;
 
@@ -189,11 +193,193 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         Ok(table)
     })?;
 
+    // generator method
+    let generator_fn = lua.create_function(|_lua, (table, gen_name): (LuaTable, String)| {
+        if BuildSystem::from_string(&gen_name).is_none() {
+            return Err(LuaError::RuntimeError(format!(
+                "Invalid generator: {}",
+                gen_name
+            )));
+        }
+        table.set("_build_system", gen_name)?;
+        Ok(table)
+    })?;
+
+    // generate method
+    let generate_fn = lua.create_function(|lua, table: LuaTable| {
+        let build_system_str: String = table.get("_build_system")?;
+        let build_system = BuildSystem::from_string(&build_system_str)
+            .ok_or_else(|| LuaError::RuntimeError("Invalid build system".into()))?;
+
+        if build_system == BuildSystem::Raw {
+            return Err(LuaError::RuntimeError(
+                "Cannot generate for 'raw' build system".into(),
+            ));
+        }
+
+        let output: Option<String> = match table.get("_output")? {
+            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
+            mlua::Value::Nil => None,
+            _ => return Err(LuaError::RuntimeError("Invalid output type".into())),
+        };
+
+        let output_name = output.unwrap_or_else(|| "a.out".to_string());
+
+        let files_table: LuaTable = table.get("_files")?;
+        let files = table_to_strings(lua, &files_table)?;
+        let files = expand_glob_patterns(files)?;
+
+        let include_dirs_table: LuaTable = table.get("_include_dirs")?;
+        let includes = table_to_strings(lua, &include_dirs_table)?;
+
+        let defines_table: LuaTable = table.get("_defines")?;
+        let defines = table_to_strings(lua, &defines_table)?;
+
+        let link_libs_table: LuaTable = table.get("_link_libs")?;
+        let link_libs = table_to_strings(lua, &link_libs_table)?;
+
+        let flags_table: LuaTable = table.get("_flags")?;
+        let flags = table_to_strings(lua, &flags_table)?;
+
+        let optimize: Option<String> = match table.get("_optimize")? {
+            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
+            mlua::Value::Nil => None,
+            _ => return Err(LuaError::RuntimeError("Invalid optimize type".into())),
+        };
+
+        let debug: bool = table.get("_debug")?;
+
+        let config = GeneratorConfig {
+            language: "cpp".to_string(),
+            files,
+            includes,
+            defines,
+            link_libs,
+            flags,
+            optimize,
+            debug,
+            output_name,
+            frameworks: vec![],
+        };
+
+        match build_system {
+            BuildSystem::CMake => {
+                generate_cmake(&config).map_err(|e| {
+                    LuaError::RuntimeError(format!("CMake generation failed: {}", e))
+                })?;
+            }
+            BuildSystem::Meson => {
+                generate_meson(&config).map_err(|e| {
+                    LuaError::RuntimeError(format!("Meson generation failed: {}", e))
+                })?;
+            }
+            BuildSystem::Raw => {
+                return Err(LuaError::RuntimeError(
+                    "Raw build system not supported".into(),
+                ));
+            }
+        }
+
+        result_to_lua_table(
+            lua,
+            &crate::api::build::common::BuildResult {
+                success: true,
+                output: format!("Generated {} configuration", build_system.as_str()),
+                error: None,
+                exit_code: Some(0),
+            },
+        )
+    })?;
+
     let run_fn = lua.create_function(|lua, table: LuaTable| {
         let compiler_int: i32 = table.get("_compiler")?;
         let compiler = Compiler::from_int(compiler_int)
             .ok_or_else(|| LuaError::RuntimeError("Invalid compiler".into()))?;
 
+        let build_system_str: String = table.get("_build_system")?;
+        let build_system = BuildSystem::from_string(&build_system_str)
+            .ok_or_else(|| LuaError::RuntimeError("Invalid build system".into()))?;
+
+        let output: Option<String> = match table.get("_output")? {
+            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
+            mlua::Value::Nil => None,
+            _ => return Err(LuaError::RuntimeError("Invalid output type".into())),
+        };
+
+        let output_name = output.unwrap_or_else(|| "a.out".to_string());
+
+        // If using a build system generator, handle it differently
+        if build_system != BuildSystem::Raw {
+            let files_table: LuaTable = table.get("_files")?;
+            let files = table_to_strings(lua, &files_table)?;
+            let files = expand_glob_patterns(files)?;
+
+            let include_dirs_table: LuaTable = table.get("_include_dirs")?;
+            let includes = table_to_strings(lua, &include_dirs_table)?;
+
+            let defines_table: LuaTable = table.get("_defines")?;
+            let defines = table_to_strings(lua, &defines_table)?;
+
+            let link_libs_table: LuaTable = table.get("_link_libs")?;
+            let link_libs = table_to_strings(lua, &link_libs_table)?;
+
+            let flags_table: LuaTable = table.get("_flags")?;
+            let flags = table_to_strings(lua, &flags_table)?;
+
+            let optimize: Option<String> = match table.get("_optimize")? {
+                mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
+                mlua::Value::Nil => None,
+                _ => return Err(LuaError::RuntimeError("Invalid optimize type".into())),
+            };
+
+            let debug: bool = table.get("_debug")?;
+
+            let config = GeneratorConfig {
+                language: "cpp".to_string(),
+                files,
+                includes,
+                defines,
+                link_libs,
+                flags,
+                optimize,
+                debug,
+                output_name: output_name.clone(),
+                frameworks: vec![],
+            };
+
+            // Generate configuration
+            match build_system {
+                BuildSystem::CMake => {
+                    generate_cmake(&config).map_err(|e| {
+                        LuaError::RuntimeError(format!("CMake generation failed: {}", e))
+                    })?;
+                    execute_cmake(&output_name).map_err(|e| {
+                        LuaError::RuntimeError(format!("CMake build failed: {}", e))
+                    })?;
+                }
+                BuildSystem::Meson => {
+                    generate_meson(&config).map_err(|e| {
+                        LuaError::RuntimeError(format!("Meson generation failed: {}", e))
+                    })?;
+                    execute_meson(&output_name).map_err(|e| {
+                        LuaError::RuntimeError(format!("Meson build failed: {}", e))
+                    })?;
+                }
+                BuildSystem::Raw => {}
+            }
+
+            return result_to_lua_table(
+                lua,
+                &crate::api::build::common::BuildResult {
+                    success: true,
+                    output: format!("Built with {}", build_system.as_str()),
+                    error: None,
+                    exit_code: Some(0),
+                },
+            );
+        }
+
+        // Raw compiler path (existing logic)
         let files_table: LuaTable = table.get("_files")?;
         let files = table_to_strings(lua, &files_table)?;
         let files = expand_glob_patterns(files)?;
@@ -305,6 +491,8 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     index_table.set("link_libs", link_libs_fn)?;
     index_table.set("flags", flags_fn)?;
     index_table.set("find_library", find_library_fn)?;
+    index_table.set("generator", generator_fn)?;
+    index_table.set("generate", generate_fn)?;
     index_table.set("run", run_fn)?;
 
     metatable.set("__index", index_table)?;

@@ -1,6 +1,7 @@
 pub mod c;
 pub mod common;
 pub mod cpp;
+pub mod generators;
 pub mod objc;
 
 use mlua::prelude::*;
