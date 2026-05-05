@@ -3,7 +3,7 @@ use mlua::prelude::*;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::api::system;
+use crate::api::{json, system};
 
 const LUSH_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -192,11 +192,11 @@ impl Runtime {
                 "mv"     => |_, (src, dst): (String, String)| system::mv(src, dst),
                 "cwd"    => |_, ()| system::cwd(),
                 "read"   => |_, path: String| system::read(path),
-                "envs"   => |_, ()| system::envs(),
+                "envs"   => |lua, ()| system::envs(lua),
                 "os"    => |_, ()| system::os(),
                 "arch"  => |_, ()| system::arch(),
                 "which" => |_, command: String| system::which(command),
-                "grep"  => |_, (pattern, text): (String, String)| system::grep(pattern, text),
+                "grep"  => |lua, (pattern, text): (String, String)| system::grep(lua, pattern, text),
                 "popen" => |_, command: String| system::popen(command),
             );
 
@@ -213,9 +213,19 @@ impl Runtime {
         // fmt module
         if let Ok(fmt_module) = self.lua.create_table() {
             reg!(fmt_module, self.lua,
-                "print" => |lua, (fmt, args): (String, mlua::Variadic<String>)| crate::api::fmt::Print(lua, (fmt, args)),
+                "print" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::Print(lua, args),
             );
             let _ = self.lua.globals().set("fmt", fmt_module);
+        }
+
+        if let Ok(json_module) = self.lua.create_table() {
+            reg!(json_module, self.lua,
+                "read_file" => |lua, path: String| json::read_file(lua, path),
+                "read_string" => |lua, content: String| json::read_string(lua, content),
+                "write_file" => |_, (path, value): (String, mlua::Value)| json::write_file(path, value),
+                "write_string" => |_, value: mlua::Value| json::write_string(value),
+            );
+            let _ = self.lua.globals().set("json", json_module);
         }
 
         // ensure a table to hold registered commands (persists functions)

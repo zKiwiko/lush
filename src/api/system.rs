@@ -170,15 +170,15 @@ pub fn which(command: String) -> LuaResult<String> {
     }
 }
 
-pub fn envs() -> LuaResult<mlua::Table> {
-    let env_table: mlua::Table = mlua::Lua::new().create_table()?;
+pub fn envs(lua: &mlua::Lua) -> LuaResult<mlua::Table> {
+    let env_table: mlua::Table = lua.create_table()?;
     for (key, value) in std::env::vars() {
         env_table.set(key, value)?;
     }
     Ok(env_table)
 }
 
-pub fn grep(pattern: String, text: String) -> LuaResult<mlua::Table> {
+pub fn grep(lua: &mlua::Lua, pattern: String, text: String) -> LuaResult<mlua::Table> {
     let regex = match regex::Regex::new(&pattern) {
         Ok(r) => r,
         Err(err) => {
@@ -189,7 +189,7 @@ pub fn grep(pattern: String, text: String) -> LuaResult<mlua::Table> {
         }
     };
 
-    let result_table: mlua::Table = mlua::Lua::new().create_table()?;
+    let result_table: mlua::Table = lua.create_table()?;
     for (i, line) in text.lines().enumerate() {
         if regex.is_match(line) {
             result_table.set(i + 1, line.to_string())?;
