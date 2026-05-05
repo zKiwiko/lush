@@ -3,7 +3,7 @@ use super::common::{
     table_to_strings,
 };
 use super::generators::{
-    BuildSystem, GeneratorConfig, execute_cmake, execute_meson, generate_cmake, generate_meson,
+    BuildSystem, GeneratorConfig, execute_cmake, execute_ninja, generate_cmake, generate_ninja,
 };
 use mlua::prelude::*;
 
@@ -52,6 +52,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     table.set("_files", lua.create_table()?)?;
     table.set("_link_libs", lua.create_table()?)?;
     table.set("_include_dirs", lua.create_table()?)?;
+    table.set("_lib_paths", lua.create_table()?)?;
     table.set("_defines", lua.create_table()?)?;
     table.set("_output", mlua::Value::Nil)?;
     table.set("_flags", lua.create_table()?)?;
@@ -173,7 +174,20 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
             include_dirs_table.set(idx + i, path.clone())?;
         }
 
-        // Add library directories (using -L flags)
+        // Add library paths
+        let lib_paths_table: LuaTable = table.get("_lib_paths")?;
+        let mut lib_path_idx = 1;
+        loop {
+            match lib_paths_table.get::<mlua::Value>(lib_path_idx)? {
+                mlua::Value::Nil => break,
+                _ => lib_path_idx += 1,
+            }
+        }
+        for (i, path) in lib_info.lib_paths.iter().enumerate() {
+            lib_paths_table.set(lib_path_idx + i, path.clone())?;
+        }
+
+        // Add library directories (using -L flags for raw compiler)
         let flags_table: LuaTable = table.get("_flags")?;
         let mut flag_idx = 1;
         loop {
@@ -250,6 +264,9 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         let flags_table: LuaTable = table.get("_flags")?;
         let flags = table_to_strings(lua, &flags_table)?;
 
+        let lib_paths_table: LuaTable = table.get("_lib_paths")?;
+        let lib_paths = table_to_strings(lua, &lib_paths_table)?;
+
         let optimize: Option<String> = match table.get("_optimize")? {
             mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
             mlua::Value::Nil => None,
@@ -262,6 +279,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
             language: "c".to_string(),
             files,
             includes,
+            lib_paths,
             defines,
             link_libs,
             flags,
@@ -277,9 +295,9 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
                     LuaError::RuntimeError(format!("CMake generation failed: {}", e))
                 })?;
             }
-            BuildSystem::Meson => {
-                generate_meson(&config).map_err(|e| {
-                    LuaError::RuntimeError(format!("Meson generation failed: {}", e))
+            BuildSystem::Ninja => {
+                generate_ninja(&config).map_err(|e| {
+                    LuaError::RuntimeError(format!("Ninja generation failed: {}", e))
                 })?;
             }
             BuildSystem::Raw => {
@@ -336,6 +354,9 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
             let flags_table: LuaTable = table.get("_flags")?;
             let flags = table_to_strings(lua, &flags_table)?;
 
+            let lib_paths_table: LuaTable = table.get("_lib_paths")?;
+            let lib_paths = table_to_strings(lua, &lib_paths_table)?;
+
             let optimize: Option<String> = match table.get("_optimize")? {
                 mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
                 mlua::Value::Nil => None,
@@ -348,6 +369,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
                 language: "c".to_string(),
                 files,
                 includes,
+                lib_paths,
                 defines,
                 link_libs,
                 flags,
@@ -367,12 +389,12 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
                         LuaError::RuntimeError(format!("CMake build failed: {}", e))
                     })?;
                 }
-                BuildSystem::Meson => {
-                    generate_meson(&config).map_err(|e| {
-                        LuaError::RuntimeError(format!("Meson generation failed: {}", e))
+                BuildSystem::Ninja => {
+                    generate_ninja(&config).map_err(|e| {
+                        LuaError::RuntimeError(format!("Ninja generation failed: {}", e))
                     })?;
-                    execute_meson(&output_name).map_err(|e| {
-                        LuaError::RuntimeError(format!("Meson build failed: {}", e))
+                    execute_ninja(&output_name).map_err(|e| {
+                        LuaError::RuntimeError(format!("Ninja build failed: {}", e))
                     })?;
                 }
                 BuildSystem::Raw => {}

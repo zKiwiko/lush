@@ -2,7 +2,9 @@ use super::common::{
     Compiler, execute_build, expand_glob_patterns, find_library, result_to_lua_table,
     table_to_strings,
 };
-use super::generators::{BuildSystem, GeneratorConfig, generate_cmake, generate_meson, execute_cmake, execute_meson};
+use super::generators::{
+    BuildSystem, GeneratorConfig, execute_cmake, execute_ninja, generate_cmake, generate_ninja,
+};
 use mlua::prelude::*;
 
 /// Initialize Objective-C-specific constants
@@ -40,6 +42,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     table.set("_files", lua.create_table()?)?;
     table.set("_link_libs", lua.create_table()?)?;
     table.set("_include_dirs", lua.create_table()?)?;
+    table.set("_lib_paths", lua.create_table()?)?;
     table.set("_defines", lua.create_table()?)?;
     table.set("_output", mlua::Value::Nil)?;
     table.set("_flags", lua.create_table()?)?;
@@ -156,7 +159,20 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
             include_dirs_table.set(idx + i, path.clone())?;
         }
 
-        // Add library directories (using -L flags)
+        // Add library paths
+        let lib_paths_table: LuaTable = table.get("_lib_paths")?;
+        let mut lib_path_idx = 1;
+        loop {
+            match lib_paths_table.get::<mlua::Value>(lib_path_idx)? {
+                mlua::Value::Nil => break,
+                _ => lib_path_idx += 1,
+            }
+        }
+        for (i, path) in lib_info.lib_paths.iter().enumerate() {
+            lib_paths_table.set(lib_path_idx + i, path.clone())?;
+        }
+
+        // Add library directories (using -L flags for raw compiler)
         let flags_table: LuaTable = table.get("_flags")?;
         let mut flag_idx = 1;
         loop {
@@ -188,7 +204,10 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     // generator method
     let generator_fn = lua.create_function(|_lua, (table, gen_name): (LuaTable, String)| {
         if BuildSystem::from_string(&gen_name).is_none() {
-            return Err(LuaError::RuntimeError(format!("Invalid generator: {}", gen_name)));
+            return Err(LuaError::RuntimeError(format!(
+                "Invalid generator: {}",
+                gen_name
+            )));
         }
         table.set("_build_system", gen_name)?;
         Ok(table)
@@ -230,6 +249,9 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         let flags_table: LuaTable = table.get("_flags")?;
         let flags = table_to_strings(lua, &flags_table)?;
 
+        let lib_paths_table: LuaTable = table.get("_lib_paths")?;
+        let lib_paths = table_to_strings(lua, &lib_paths_table)?;
+
         let frameworks_table: LuaTable = table.get("_frameworks")?;
         let frameworks = table_to_strings(lua, &frameworks_table)?;
 
@@ -245,6 +267,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
             language: "objc".to_string(),
             files,
             includes,
+            lib_paths,
             defines,
             link_libs,
             flags,
@@ -256,24 +279,31 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
 
         match build_system {
             BuildSystem::CMake => {
-                generate_cmake(&config)
-                    .map_err(|e| LuaError::RuntimeError(format!("CMake generation failed: {}", e)))?;
+                generate_cmake(&config).map_err(|e| {
+                    LuaError::RuntimeError(format!("CMake generation failed: {}", e))
+                })?;
             }
-            BuildSystem::Meson => {
-                generate_meson(&config)
-                    .map_err(|e| LuaError::RuntimeError(format!("Meson generation failed: {}", e)))?;
+            BuildSystem::Ninja => {
+                generate_ninja(&config).map_err(|e| {
+                    LuaError::RuntimeError(format!("Ninja generation failed: {}", e))
+                })?;
             }
             BuildSystem::Raw => {
-                return Err(LuaError::RuntimeError("Raw build system not supported".into()));
+                return Err(LuaError::RuntimeError(
+                    "Raw build system not supported".into(),
+                ));
             }
         }
 
-        result_to_lua_table(lua, &crate::api::build::common::BuildResult {
-            success: true,
-            output: format!("Generated {} configuration", build_system.as_str()),
-            error: None,
-            exit_code: Some(0),
-        })
+        result_to_lua_table(
+            lua,
+            &crate::api::build::common::BuildResult {
+                success: true,
+                output: format!("Generated {} configuration", build_system.as_str()),
+                error: None,
+                exit_code: Some(0),
+            },
+        )
     })?;
 
     let run_fn = lua.create_function(|lua, table: LuaTable| {
@@ -311,6 +341,9 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
             let flags_table: LuaTable = table.get("_flags")?;
             let flags = table_to_strings(lua, &flags_table)?;
 
+            let lib_paths_table: LuaTable = table.get("_lib_paths")?;
+            let lib_paths = table_to_strings(lua, &lib_paths_table)?;
+
             let frameworks_table: LuaTable = table.get("_frameworks")?;
             let frameworks = table_to_strings(lua, &frameworks_table)?;
 
@@ -326,6 +359,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
                 language: "objc".to_string(),
                 files,
                 includes,
+                lib_paths,
                 defines,
                 link_libs,
                 flags,
@@ -338,26 +372,33 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
             // Generate configuration
             match build_system {
                 BuildSystem::CMake => {
-                    generate_cmake(&config)
-                        .map_err(|e| LuaError::RuntimeError(format!("CMake generation failed: {}", e)))?;
-                    execute_cmake(&output_name)
-                        .map_err(|e| LuaError::RuntimeError(format!("CMake build failed: {}", e)))?;
+                    generate_cmake(&config).map_err(|e| {
+                        LuaError::RuntimeError(format!("CMake generation failed: {}", e))
+                    })?;
+                    execute_cmake(&output_name).map_err(|e| {
+                        LuaError::RuntimeError(format!("CMake build failed: {}", e))
+                    })?;
                 }
-                BuildSystem::Meson => {
-                    generate_meson(&config)
-                        .map_err(|e| LuaError::RuntimeError(format!("Meson generation failed: {}", e)))?;
-                    execute_meson(&output_name)
-                        .map_err(|e| LuaError::RuntimeError(format!("Meson build failed: {}", e)))?;
+                BuildSystem::Ninja => {
+                    generate_ninja(&config).map_err(|e| {
+                        LuaError::RuntimeError(format!("Ninja generation failed: {}", e))
+                    })?;
+                    execute_ninja(&output_name).map_err(|e| {
+                        LuaError::RuntimeError(format!("Ninja build failed: {}", e))
+                    })?;
                 }
                 BuildSystem::Raw => {}
             }
 
-            return result_to_lua_table(lua, &crate::api::build::common::BuildResult {
-                success: true,
-                output: format!("Built with {}", build_system.as_str()),
-                error: None,
-                exit_code: Some(0),
-            });
+            return result_to_lua_table(
+                lua,
+                &crate::api::build::common::BuildResult {
+                    success: true,
+                    output: format!("Built with {}", build_system.as_str()),
+                    error: None,
+                    exit_code: Some(0),
+                },
+            );
         }
 
         // Raw compiler path (existing logic)
