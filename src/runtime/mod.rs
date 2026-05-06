@@ -28,15 +28,27 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    pub fn new() -> Self {
-        let runtime = Runtime { lua: Lua::new() };
+    /// @param `c` If true, enable LuaJIT's unsafe FFI and Debug libraries.
+    pub fn new(c: bool) -> Self {
+        let lua = if c {
+            unsafe { Lua::unsafe_new() }
+        } else {
+            Lua::new()
+        };
+
+        let runtime = Runtime { lua };
 
         runtime.load_api();
 
         runtime
     }
 
-    pub fn execute(&self, command: &str, file_path: Option<String>) -> LuaResult<bool> {
+    pub fn execute(
+        &self,
+        command: &str,
+        arguments: &[String],
+        file_path: Option<String>,
+    ) -> LuaResult<bool> {
         // determine which file to load
         let script_path = match file_path {
             Some(path) => PathBuf::from(path),
@@ -63,7 +75,7 @@ impl Runtime {
         }
 
         // run the requested command (registered by lush.lua)
-        self.run_command(command)
+        self.run_command(command, arguments)
     }
 
     /// Load and execute the user's `lush.lua` but do not invoke any registered command.
@@ -97,9 +109,9 @@ impl Runtime {
         Ok(true)
     }
 
-    pub fn run_command(&self, command: &str) -> LuaResult<bool> {
+    pub fn run_command(&self, command: &str, arguments: &[String]) -> LuaResult<bool> {
         // First, try to execute as a task (with dependency resolution)
-        if let Ok(success) = self.execute_task(command) {
+        if let Ok(success) = self.execute_task(command, arguments) {
             return Ok(success);
         }
 
@@ -107,14 +119,27 @@ impl Runtime {
         let globals = self.lua.globals();
         match globals.get::<mlua::Table>("lush_commands") {
             Ok(cmds) => match cmds.get::<mlua::Function>(command) {
-                Ok(func) => Ok(func.call::<()>(()).is_ok()),
+                Ok(func) => {
+                    if arguments.is_empty() {
+                        Ok(func.call::<()>(()).is_ok())
+                    } else {
+                        // Pass arguments as separate variadic arguments
+                        let args: Vec<mlua::Value> = arguments
+                            .iter()
+                            .map(|s| mlua::Value::String(self.lua.create_string(s).unwrap()))
+                            .collect();
+                        Ok(func
+                            .call::<mlua::MultiValue>(mlua::MultiValue::from_vec(args))
+                            .is_ok())
+                    }
+                }
                 Err(_) => Ok(false),
             },
             Err(_) => Ok(false),
         }
     }
 
-    fn execute_task(&self, task_name: &str) -> LuaResult<bool> {
+    fn execute_task(&self, task_name: &str, arguments: &[String]) -> LuaResult<bool> {
         let task_registry = self.lua.named_registry_value::<mlua::Table>("lush_tasks")?;
 
         // Check if task exists
@@ -123,7 +148,13 @@ impl Runtime {
                 // Execute with dependency resolution
                 let mut visited = std::collections::HashSet::new();
                 let mut rec_stack = std::collections::HashSet::new();
-                self.visit_task(task_name, &task_registry, &mut visited, &mut rec_stack)?;
+                self.visit_task(
+                    task_name,
+                    &task_registry,
+                    &mut visited,
+                    &mut rec_stack,
+                    arguments,
+                )?;
                 Ok(true)
             }
             Err(_) => Err(LuaError::RuntimeError("task not found".into())),
@@ -136,6 +167,7 @@ impl Runtime {
         task_registry: &mlua::Table,
         visited: &mut std::collections::HashSet<String>,
         rec_stack: &mut std::collections::HashSet<String>,
+        arguments: &[String],
     ) -> LuaResult<()> {
         if visited.contains(task_name) {
             return Ok(());
@@ -159,7 +191,7 @@ impl Runtime {
             match depends.get::<mlua::Value>(i) {
                 Ok(mlua::Value::String(s)) => {
                     let dep_name = s.to_str()?.to_owned();
-                    self.visit_task(&dep_name, task_registry, visited, rec_stack)?;
+                    self.visit_task(&dep_name, task_registry, visited, rec_stack, arguments)?;
                     i += 1;
                 }
                 Ok(mlua::Value::Nil) | Err(_) => break,
@@ -171,7 +203,16 @@ impl Runtime {
 
         // Execute this task
         let handler: mlua::Function = task_table.get("handler")?;
-        handler.call::<()>(())?;
+        if arguments.is_empty() {
+            handler.call::<()>(())?;
+        } else {
+            handler.call::<mlua::MultiValue>(
+                arguments
+                    .iter()
+                    .map(|s| mlua::Value::String(self.lua.create_string(s).unwrap()))
+                    .collect::<mlua::MultiValue>(),
+            )?;
+        }
 
         rec_stack.remove(task_name);
         visited.insert(task_name.to_string());
@@ -190,8 +231,7 @@ impl Runtime {
                 "rm"     => |_, path: String| system::rm(path),
                 "cp"     => |_, (src, dst): (String, String)| system::cp(src, dst),
                 "mv"     => |_, (src, dst): (String, String)| system::mv(src, dst),
-                "cwd"    => |_, ()| system::cwd(),
-                "read"   => |_, path: String| system::read(path),
+                "cwd"    => |_, ()| system::pwd(),
                 "envs"   => |lua, ()| system::envs(lua),
                 "os"    => |_, ()| system::os(),
                 "arch"  => |_, ()| system::arch(),

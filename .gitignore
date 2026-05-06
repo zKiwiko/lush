@@ -1,6 +1,5 @@
 /target
 
-*.lua
 *.c
 *.cpp
 *.go

@@ -36,7 +36,7 @@ pub fn exec(command: String) -> LuaResult<()> {
     }
 
     if command.trim().to_lowercase() == "lush" {
-        return Err(mlua::Error::RuntimeError("Recursive call to 'lush'".into()));
+        return Err(mlua::Error::RuntimeError("recursive call to 'lush'".into()));
     }
 
     // Run shell command
@@ -51,7 +51,8 @@ pub fn exec(command: String) -> LuaResult<()> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        std::process::Command::new("sh")
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+        std::process::Command::new(&shell)
             .arg("-c")
             .arg(command)
             .status()
@@ -63,7 +64,10 @@ pub fn exec(command: String) -> LuaResult<()> {
 pub fn getenv(var: String) -> LuaResult<String> {
     match std::env::var(&var) {
         Ok(val) => Ok(val),
-        Err(_) => Ok(String::new()),
+        Err(_) => Err(mlua::Error::RuntimeError(format!(
+            "Environment variable '{}' not found",
+            var
+        ))),
     }
 }
 
@@ -101,21 +105,11 @@ pub fn mv(src: String, dst: String) -> LuaResult<()> {
 }
 
 // Current working directory (not change)
-pub fn cwd() -> LuaResult<String> {
+pub fn pwd() -> LuaResult<String> {
     match std::env::current_dir() {
         Ok(path) => Ok(path.to_string_lossy().to_string()),
         Err(err) => Err(mlua::Error::RuntimeError(format!(
             "Failed to get current working directory: {}",
-            err
-        ))),
-    }
-}
-
-pub fn read(path: String) -> LuaResult<String> {
-    match std::fs::read_to_string(path) {
-        Ok(content) => Ok(content),
-        Err(err) => Err(mlua::Error::RuntimeError(format!(
-            "Failed to read file: {}",
             err
         ))),
     }

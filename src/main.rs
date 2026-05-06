@@ -9,6 +9,10 @@ struct Cli {
     // Command to run (registered by lush.lua)
     command: Option<String>,
 
+    // Arguments to pass to the command
+    #[arg(short, long, num_args = 1..)]
+    arguments: Vec<String>,
+
     /// Path to lush.lua file (default: ./lush.lua)
     #[arg(short, long)]
     path: Option<String>,
@@ -18,11 +22,14 @@ struct Cli {
 
     #[arg(long)]
     verbose: bool,
+
+    #[arg(short, long)]
+    c: bool,
 }
 
 fn main() {
     let cli = Cli::parse();
-    let runtime = runtime::Runtime::new();
+    let runtime = runtime::Runtime::new(cli.c);
 
     if cli.verbose {
         println!("Lush version {}", env!("CARGO_PKG_VERSION"));
@@ -45,7 +52,7 @@ fn main() {
     }
 
     if let Some(command) = cli.command {
-        match runtime.execute(&command, cli.path) {
+        match runtime.execute(&command, &cli.arguments, cli.path) {
             Ok(true) => (),
             Ok(false) => std::process::exit(1),
             Err(err) => {

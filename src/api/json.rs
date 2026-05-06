@@ -28,6 +28,7 @@ fn lua_to_json(value: mlua::Value) -> LuaResult<serde_json::Value> {
         mlua::Value::Nil => Ok(serde_json::Value::Null),
         mlua::Value::Boolean(b) => Ok(serde_json::Value::Bool(b)),
         mlua::Value::Number(n) => Ok(serde_json::json!(n)),
+        mlua::Value::Integer(i) => Ok(serde_json::json!(i)),
         mlua::Value::String(s) => Ok(serde_json::Value::String(s.to_str()?.to_string())),
         mlua::Value::Table(table) => {
             let mut index = 1;

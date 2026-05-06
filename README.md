@@ -2,7 +2,12 @@
 
 ## Overview
 
-Lush is a small, friendly task runner and build tool that uses Lua. It gives
-you a shell-like scripting API in Lua, but with more flexibility than plain
-Bash, Fish, or Zsh. Think of it as a mix between Make and XMake — easy task
-dependencies, simple build flows, and native Lua scripting.
+Lush is a lightweight task runner and build tool written in Rust, configured entirely in Lua. It combines the simplicity of shell scripting with the power and flexibility of a real programming language.
+
+Think of it as **Make meets Lua** — you get task dependencies, fluent build APIs, and native scripting without the cryptic syntax or limitations of traditional build systems.
+
+### Documentation can be view here: https://zkiwiko.github.io/lush
+
+## License
+
+MIT
