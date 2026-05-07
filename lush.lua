@@ -14,3 +14,21 @@ lush.task("echo", function(...)
     local args = table.concat({ ... }, " ")
     fmt.print("{}", str.trim(args))
 end)
+
+lush.task("c", function(...)
+    fmt.print("Running C task with args: {}", table.concat({ ... }, " "))
+    local result = build.c()
+        :compiler(build.COMPILER.GCC) -- Default
+        :optimize(build.c.OPTIMIZE.O2)
+        :files({ "main.c" })          -- Glob pattern
+        :output("main")
+        :run()
+
+    fmt.print("{}", result)
+
+    if result.success then
+        print(result.output)
+    else
+        print(result.error)
+    end
+end)

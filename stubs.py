@@ -3,6 +3,20 @@ import re
 from pathlib import Path
 from collections import defaultdict
 
+def split_build_constant(const_name):
+    """Map flat Rust constant names to nested Lua paths."""
+    if const_name.startswith("COMPILER_"):
+        return ("COMPILER", const_name[len("COMPILER_"):])
+    if const_name.startswith("OPTIMIZE_"):
+        return ("OPTIMIZE", const_name[len("OPTIMIZE_"):])
+    if const_name.startswith("STD_"):
+        return ("STD", const_name[len("STD_"):])
+    if const_name.startswith("WARNINGS_"):
+        return ("WARNINGS", const_name[len("WARNINGS_"):])
+    if const_name.startswith("GENERATOR_"):
+        return ("GENERATOR", const_name[len("GENERATOR_"):])
+    return None
+
 # Map of (module, func_name) -> metadata
 metadata = defaultdict(dict)
 
@@ -39,9 +53,9 @@ for rs_file in Path("src/api").rglob("*.rs"):
         # Infer module from file path
         rel_path = rs_file.relative_to("src/api")
         if rel_path.name == "mod.rs":
-            module = rel_path.parent.name if rel_path.parent.name != "." else None
+            module = rel_path.parent.name if rel_path.parent.name else None
         else:
-            module = rel_path.parent.name if rel_path.parent.name != "." else rel_path.stem
+            module = rel_path.parent.name if rel_path.parent.name else rel_path.stem
 
         if module and meta:
             metadata[(module, func_name)] = meta
@@ -57,7 +71,7 @@ for rs_file in Path("src/api").rglob("*.rs"):
     content = rs_file.read_text()
 
     # Find pub const with doc comments: /// @desc ... pub const NAME: Type = value;
-    pattern = r'((?:\s*\/\/\/.*\n)*)\s*pub const\s+(\w+)(?:\s*:\s*[\w<>:]+)?\s*=\s*([^;]+);'
+    pattern = r'((?:\s*\/\/\/.*\n)*)\s*pub const\s+(\w+)(?:\s*:\s*[\w&<>:]+)?\s*=\s*([^;]+);'
 
     for match in re.finditer(pattern, content):
         doc_lines = match.group(1)
@@ -80,6 +94,7 @@ for rs_file in Path("src/api").rglob("*.rs"):
             if module:
                 variables[(module, const_name)] = meta
 
+# Parse build module methods and constants
 build_methods = defaultdict(dict)  # {language: {method_name: metadata}}
 build_constants = defaultdict(dict)  # {language: {const_name: metadata}}
 
@@ -90,7 +105,7 @@ for rs_file in Path("src/api/build").glob("*.rs"):
     content = rs_file.read_text()
 
     # Extract constants from build module
-    const_pattern = r'((?:\s*\/\/\/.*\n)*)\s*pub const\s+(\w+)(?:\s*:\s*[\w<>:]+)?\s*=\s*([^;]+);'
+    const_pattern = r'((?:\s*\/\/\/.*\n)*)\s*pub const\s+(\w+)(?:\s*:\s*[\w&<>:]+)?\s*=\s*([^;]+);'
     for match in re.finditer(const_pattern, content):
         doc_lines = match.group(1)
         const_name = match.group(2)
@@ -115,9 +130,9 @@ for rs_file in Path("src/api/build").glob("*.rs"):
 
     # Find documented methods: /// @desc ... // comment ... let method_name_fn = lua.create_function
     # This regex captures doc comments, allowing other comments/whitespace in between
-    pattern = r'((?:\s*\/\/\/.*\n)+)(?:(?:\s*\/\/[^\n]*\n)*)\s*let\s+(\w+)_fn\s*=\s*lua\.create_function'
+    method_pattern = r'((?:\s*\/\/\/.*\n)+)(?:(?:\s*\/\/[^\n]*\n)*)\s*let\s+(\w+)_fn\s*=\s*lua\.create_function'
 
-    for match in re.finditer(pattern, content):
+    for match in re.finditer(method_pattern, content):
         doc_lines = match.group(1)
         method_name = match.group(2)
 
@@ -161,6 +176,7 @@ for m in module_blocks:
 
 # Generate stubs
 stubs = []
+stubs.append("---@meta")
 
 # Map from Lua module names (from registration) to file module names (from file paths)
 # This handles cases where filename != registered name (e.g., system.rs -> sys)
@@ -221,14 +237,21 @@ if build_methods or build_constants:
         stubs.append("-- Build compiler constants")
         for const_name in sorted(build_constants["build"].keys()):
             const_meta = build_constants["build"][const_name]
+            const_path = split_build_constant(const_name)
             if 'desc' in const_meta:
                 stubs.append(f"---@desc {const_meta['desc']}")
-            stubs.append(f"build.{const_name} = {const_meta['value']}")
+            if const_path:
+                group, leaf = const_path
+                stubs.append(f"build.{group} = build.{group} or {{}}")
+                stubs.append(f"build.{group}.{leaf} = {const_meta['value']}")
+            else:
+                stubs.append(f"build.{const_name} = {const_meta['value']}")
             stubs.append("")
         stubs.append("")
 
-    # Language constructors and methods
-    for lang in sorted(build_methods.keys()):
+    # Language constructors and methods - iterate over all languages that have methods or constants
+    all_langs = (set(build_methods.keys()) | set(build_constants.keys())) - {"build"}
+    for lang in sorted(all_langs):
         stubs.append(f"--- Language constructor for {lang.upper()}")
         stubs.append(f"---@return table build_task")
         stubs.append(f"function build.{lang}() end")
@@ -237,43 +260,58 @@ if build_methods or build_constants:
         # Language-specific constants
         if lang in build_constants:
             stubs.append(f"-- {lang.upper()} constants")
+            # build.<lang> is intentionally a function in the runtime API.
+            # LuaLS flags function field assignments (inject-field), so silence it
+            # only for this generated constants block.
+            stubs.append("---@diagnostic disable: inject-field")
+            emitted_groups = set()
             for const_name in sorted(build_constants[lang].keys()):
                 const_meta = build_constants[lang][const_name]
+                const_path = split_build_constant(const_name)
                 if 'desc' in const_meta:
                     stubs.append(f"---@desc {const_meta['desc']}")
-                stubs.append(f"build.{lang}.{const_name} = {const_meta['value']}")
+                if const_path:
+                    group, leaf = const_path
+                    if group not in emitted_groups:
+                        stubs.append(f"build.{lang}.{group} = build.{lang}.{group} or {{}}")
+                        emitted_groups.add(group)
+                    stubs.append(f"build.{lang}.{group}.{leaf} = {const_meta['value']}")
+                else:
+                    stubs.append(f"build.{lang}.{const_name} = {const_meta['value']}")
                 stubs.append("")
+            stubs.append("---@diagnostic enable: inject-field")
             stubs.append("")
 
-        # Methods for this language
-        stubs.append(f"-- {lang.upper()} build task methods")
-        stubs.append(f"---@class build.{lang}_task")
-        stubs.append(f"local {lang}_task = {{}}")
-        stubs.append("")
-
-        for method_name in sorted(build_methods[lang].keys()):
-            meta = build_methods[lang][method_name]
-
-            if 'desc' in meta:
-                stubs.append(f"---@desc {meta['desc']}")
-
-            if 'params' in meta:
-                for param_name, param_type in meta['params']:
-                    stubs.append(f"---@param {param_name} {param_type}")
-
-            if 'return' in meta:
-                stubs.append(f"---@return {meta['return']}")
-            else:
-                stubs.append(f"---@return build.{lang}_task")
-
-            # Build method signature
-            if 'params' in meta:
-                param_str = ", ".join(p[0] for p in meta['params'])
-                stubs.append(f"function {lang}_task:{method_name}({param_str}) end")
-            else:
-                stubs.append(f"function {lang}_task:{method_name}(...) end")
-
+        # Methods for this language (if any)
+        if lang in build_methods:
+            stubs.append(f"-- {lang.upper()} build task methods")
+            stubs.append(f"---@class build.{lang}_task")
+            stubs.append(f"local {lang}_task = {{}}")
             stubs.append("")
+
+            for method_name in sorted(build_methods[lang].keys()):
+                meta = build_methods[lang][method_name]
+
+                if 'desc' in meta:
+                    stubs.append(f"---@desc {meta['desc']}")
+
+                if 'params' in meta:
+                    for param_name, param_type in meta['params']:
+                        stubs.append(f"---@param {param_name} {param_type}")
+
+                if 'return' in meta:
+                    stubs.append(f"---@return {meta['return']}")
+                else:
+                    stubs.append(f"---@return build.{lang}_task")
+
+                # Build method signature
+                if 'params' in meta:
+                    param_str = ", ".join(p[0] for p in meta['params'])
+                    stubs.append(f"function {lang}_task:{method_name}({param_str}) end")
+                else:
+                    stubs.append(f"function {lang}_task:{method_name}(...) end")
+
+                stubs.append("")
 
 out = "\n".join(stubs)
 Path("lua_stubs/lush.d.lua").write_text(out)

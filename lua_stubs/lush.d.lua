@@ -1,3 +1,4 @@
+---@meta
 -- fmt module
 ---@class fmt
 fmt = {}
@@ -105,8 +106,207 @@ build = {}
 
 -- Build compiler constants
 ---@desc Clang compiler
-build.COMPILER_CLANG = 1
+build.COMPILER = build.COMPILER or {}
+build.COMPILER.CLANG = 1
 
 ---@desc GCC compiler
-build.COMPILER_GCC = 0
+build.COMPILER = build.COMPILER or {}
+build.COMPILER.GCC = 0
 
+
+--- Language constructor for C
+---@return table build_task
+function build.c() end
+
+-- C constants
+---@diagnostic disable: inject-field
+---@desc Use CMake generator
+build.c.GENERATOR = build.c.GENERATOR or {}
+build.c.GENERATOR.CMAKE = "cmake"
+
+---@desc Use Ninja generator
+build.c.GENERATOR.NINJA = "ninja"
+
+---@desc Use raw compiler invocation (no generator)
+build.c.GENERATOR.RAW = "raw"
+
+---@desc Optimization level O0 - no optimization
+build.c.OPTIMIZE = build.c.OPTIMIZE or {}
+build.c.OPTIMIZE.O0 = "O0"
+
+---@desc Optimization level O1 - minimize size
+build.c.OPTIMIZE.O1 = "O1"
+
+---@desc Optimization level O2 - optimize
+build.c.OPTIMIZE.O2 = "O2"
+
+---@desc Optimization level O3 - maximize performance
+build.c.OPTIMIZE.O3 = "O3"
+
+---@desc Optimization level Os - optimize for size
+build.c.OPTIMIZE.OS = "Os"
+
+---@desc Optimization level Oz - aggressively optimize for size
+build.c.OPTIMIZE.OZ = "Oz"
+
+---@desc C11 standard
+build.c.STD = build.c.STD or {}
+build.c.STD.C11 = "c11"
+
+---@desc C17 standard
+build.c.STD.C17 = "c17"
+
+---@desc C2X standard (upcoming C standard)
+build.c.STD.C2X = "c2x"
+
+---@desc C89 standard
+build.c.STD.C89 = "c89"
+
+---@desc C99 standard
+build.c.STD.C99 = "c99"
+
+---@desc All warnings (-Wall)
+build.c.WARNINGS = build.c.WARNINGS or {}
+build.c.WARNINGS.ALL = "Wall"
+
+---@desc Extra warnings (-Wextra)
+build.c.WARNINGS.EXTRA = "Wextra"
+
+---@desc No warnings
+build.c.WARNINGS.NONE = ""
+
+---@desc Normal warnings (-Wall)
+build.c.WARNINGS.NORMAL = "Wall"
+
+---@desc Pedantic warnings (-pedantic)
+build.c.WARNINGS.PEDANTIC = "pedantic"
+
+---@diagnostic enable: inject-field
+
+--- Language constructor for CPP
+---@return table build_task
+function build.cpp() end
+
+-- CPP constants
+---@diagnostic disable: inject-field
+---@desc Use CMake generator
+build.cpp.GENERATOR = build.cpp.GENERATOR or {}
+build.cpp.GENERATOR.CMAKE = "cmake"
+
+---@desc Use Ninja generator
+build.cpp.GENERATOR.NINJA = "ninja"
+
+---@desc Use raw compiler invocation (no generator)
+build.cpp.GENERATOR.RAW = "raw"
+
+---@desc Optimization level O0 - no optimization
+build.cpp.OPTIMIZE = build.cpp.OPTIMIZE or {}
+build.cpp.OPTIMIZE.O0 = "O0"
+
+---@desc Optimization level O1 - minimize size
+build.cpp.OPTIMIZE.O1 = "O1"
+
+---@desc Optimization level O2 - optimize
+build.cpp.OPTIMIZE.O2 = "O2"
+
+---@desc Optimization level O3 - maximize performance
+build.cpp.OPTIMIZE.O3 = "O3"
+
+---@desc Optimization level Os - optimize for size
+build.cpp.OPTIMIZE.OS = "Os"
+
+---@desc Optimization level Oz - aggressively optimize for size
+build.cpp.OPTIMIZE.OZ = "Oz"
+
+---@desc C++03 standard
+build.cpp.STD = build.cpp.STD or {}
+build.cpp.STD.CXX03 = "c++03"
+
+---@desc C++11 standard
+build.cpp.STD.CXX11 = "c++11"
+
+---@desc C++14 standard
+build.cpp.STD.CXX14 = "c++14"
+
+---@desc C++17 standard
+build.cpp.STD.CXX17 = "c++17"
+
+---@desc C++20 standard
+build.cpp.STD.CXX20 = "c++20"
+
+---@desc C++23 standard
+build.cpp.STD.CXX23 = "c++23"
+
+---@desc C++98 standard
+build.cpp.STD.CXX98 = "c++98"
+
+---@desc All warnings (-Wall)
+build.cpp.WARNINGS = build.cpp.WARNINGS or {}
+build.cpp.WARNINGS.ALL = "Wall"
+
+---@desc Extra warnings (-Wextra)
+build.cpp.WARNINGS.EXTRA = "Wextra"
+
+---@desc No warnings
+build.cpp.WARNINGS.NONE = ""
+
+---@desc Normal warnings (-Wall)
+build.cpp.WARNINGS.NORMAL = "Wall"
+
+---@desc Pedantic warnings (-pedantic)
+build.cpp.WARNINGS.PEDANTIC = "pedantic"
+
+---@diagnostic enable: inject-field
+
+--- Language constructor for OBJC
+---@return table build_task
+function build.objc() end
+
+-- OBJC constants
+---@diagnostic disable: inject-field
+---@desc Use CMake generator
+build.objc.GENERATOR = build.objc.GENERATOR or {}
+build.objc.GENERATOR.CMAKE = "cmake"
+
+---@desc Use Ninja generator
+build.objc.GENERATOR.NINJA = "ninja"
+
+---@desc Use raw compiler invocation (no generator)
+build.objc.GENERATOR.RAW = "raw"
+
+---@desc Optimization level O0 - no optimization
+build.objc.OPTIMIZE = build.objc.OPTIMIZE or {}
+build.objc.OPTIMIZE.O0 = "O0"
+
+---@desc Optimization level O1 - minimize size
+build.objc.OPTIMIZE.O1 = "O1"
+
+---@desc Optimization level O2 - optimize
+build.objc.OPTIMIZE.O2 = "O2"
+
+---@desc Optimization level O3 - maximize performance
+build.objc.OPTIMIZE.O3 = "O3"
+
+---@desc Optimization level Os - optimize for size
+build.objc.OPTIMIZE.OS = "Os"
+
+---@desc Optimization level Oz - aggressively optimize for size
+build.objc.OPTIMIZE.OZ = "Oz"
+
+---@desc All warnings (-Wall)
+build.objc.WARNINGS = build.objc.WARNINGS or {}
+build.objc.WARNINGS.ALL = "Wall"
+
+---@desc Extra warnings (-Wextra)
+build.objc.WARNINGS.EXTRA = "Wextra"
+
+---@desc No warnings
+build.objc.WARNINGS.NONE = ""
+
+---@desc Normal warnings (-Wall)
+build.objc.WARNINGS.NORMAL = "Wall"
+
+---@desc Pedantic warnings (-pedantic)
+build.objc.WARNINGS.PEDANTIC = "pedantic"
+
+---@diagnostic enable: inject-field

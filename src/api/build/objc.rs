@@ -33,6 +33,14 @@ pub const WARNINGS_EXTRA: &str = "Wextra";
 /// @desc Pedantic warnings (-pedantic)
 pub const WARNINGS_PEDANTIC: &str = "pedantic";
 
+// Build generator constants
+/// @desc Use raw compiler invocation (no generator)
+pub const GENERATOR_RAW: &str = "raw";
+/// @desc Use CMake generator
+pub const GENERATOR_CMAKE: &str = "cmake";
+/// @desc Use Ninja generator
+pub const GENERATOR_NINJA: &str = "ninja";
+
 /// Initialize Objective-C-specific constants
 pub fn register_constants(lua: &Lua, build_table: &LuaTable) -> LuaResult<()> {
     let objc_table = lua.create_table()?;
@@ -59,6 +67,15 @@ pub fn register_constants(lua: &Lua, build_table: &LuaTable) -> LuaResult<()> {
         "PEDANTIC" => WARNINGS_PEDANTIC
     );
     objc_table.set("WARNINGS", warn_table)?;
+
+    // Build system generators
+    let generator_table = lua.create_table()?;
+    regv!(generator_table, lua,
+        "RAW" => GENERATOR_RAW,
+        "CMAKE" => GENERATOR_CMAKE,
+        "NINJA" => GENERATOR_NINJA
+    );
+    objc_table.set("GENERATOR", generator_table)?;
 
     build_table.set("objc", objc_table)?;
     Ok(())
