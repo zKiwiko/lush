@@ -1,7 +1,10 @@
 use mlua::prelude::*;
 
+/// @desc Constant representing a file type
 pub const FILE: u8 = 0;
+/// @desc Constant representing a directory type
 pub const DIRECTORY: u8 = 1;
+/// @desc Constant representing a symbolic link type
 pub const SYMLINK: u8 = 2;
 
 pub fn find(what: u8, name: String) -> LuaResult<bool> {

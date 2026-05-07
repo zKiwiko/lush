@@ -7,79 +7,114 @@ use super::generators::{
 };
 use mlua::prelude::*;
 
+// Optimization level constants
+/// @desc Optimization level O0 - no optimization
+pub const OPTIMIZE_O0: &str = "O0";
+/// @desc Optimization level O1 - minimize size
+pub const OPTIMIZE_O1: &str = "O1";
+/// @desc Optimization level O2 - optimize
+pub const OPTIMIZE_O2: &str = "O2";
+/// @desc Optimization level O3 - maximize performance
+pub const OPTIMIZE_O3: &str = "O3";
+/// @desc Optimization level Os - optimize for size
+pub const OPTIMIZE_OS: &str = "Os";
+/// @desc Optimization level Oz - aggressively optimize for size
+pub const OPTIMIZE_OZ: &str = "Oz";
+
+// C standard constants
+/// @desc C89 standard
+pub const STD_C89: &str = "c89";
+/// @desc C99 standard
+pub const STD_C99: &str = "c99";
+/// @desc C11 standard
+pub const STD_C11: &str = "c11";
+/// @desc C17 standard
+pub const STD_C17: &str = "c17";
+/// @desc C2X standard (upcoming C standard)
+pub const STD_C2X: &str = "c2x";
+
+// Warning level constants
+/// @desc No warnings
+pub const WARNINGS_NONE: &str = "";
+/// @desc Normal warnings (-Wall)
+pub const WARNINGS_NORMAL: &str = "Wall";
+/// @desc All warnings (-Wall)
+pub const WARNINGS_ALL: &str = "Wall";
+/// @desc Extra warnings (-Wextra)
+pub const WARNINGS_EXTRA: &str = "Wextra";
+/// @desc Pedantic warnings (-pedantic)
+pub const WARNINGS_PEDANTIC: &str = "pedantic";
+
 /// Initialize C-specific constants
 pub fn register_constants(lua: &Lua, build_table: &LuaTable) -> LuaResult<()> {
     let c_table = lua.create_table()?;
 
     // Optimization flags
     let opt_table = lua.create_table()?;
-    opt_table.set("O0", "O0")?;
-    opt_table.set("O1", "O1")?;
-    opt_table.set("O2", "O2")?;
-    opt_table.set("O3", "O3")?;
-    opt_table.set("OS", "Os")?; // Optimize for size
-    opt_table.set("OZ", "Oz")?; // Optimize for size aggressively
+    regv!(opt_table, lua,
+        "O0" => OPTIMIZE_O0,
+        "O1" => OPTIMIZE_O1,
+        "O2" => OPTIMIZE_O2,
+        "O3" => OPTIMIZE_O3,
+        "OS" => OPTIMIZE_OS,
+        "OZ" => OPTIMIZE_OZ
+    );
     c_table.set("OPTIMIZE", opt_table)?;
 
     // Standard versions
     let std_table = lua.create_table()?;
-    std_table.set("C89", "c89")?;
-    std_table.set("C99", "c99")?;
-    std_table.set("C11", "c11")?;
-    std_table.set("C17", "c17")?;
-    std_table.set("C2X", "c2x")?;
+    regv!(std_table, lua,
+        "C89" => STD_C89,
+        "C99" => STD_C99,
+        "C11" => STD_C11,
+        "C17" => STD_C17,
+        "C2X" => STD_C2X
+    );
     c_table.set("STD", std_table)?;
 
     // Warning levels
     let warn_table = lua.create_table()?;
-    warn_table.set("NONE", "")?;
-    warn_table.set("NORMAL", "Wall")?;
-    warn_table.set("ALL", "Wall")?;
-    warn_table.set("EXTRA", "Wextra")?;
-    warn_table.set("PEDANTIC", "pedantic")?;
+    regv!(warn_table, lua,
+        "NONE" => WARNINGS_NONE,
+        "NORMAL" => WARNINGS_NORMAL,
+        "ALL" => WARNINGS_ALL,
+        "EXTRA" => WARNINGS_EXTRA,
+        "PEDANTIC" => WARNINGS_PEDANTIC
+    );
     c_table.set("WARNINGS", warn_table)?;
 
     build_table.set("c", c_table)?;
     Ok(())
 }
 
-/// Create C build task table
-pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
-    let table = lua.create_table()?;
-    table.set("_language", "c")?;
-    table.set("_compiler", 0i32)?; // Default: GCC
-    table.set("_std", "c11")?; // Default: C11
-    table.set("_files", lua.create_table()?)?;
-    table.set("_link_libs", lua.create_table()?)?;
-    table.set("_include_dirs", lua.create_table()?)?;
-    table.set("_lib_paths", lua.create_table()?)?;
-    table.set("_defines", lua.create_table()?)?;
-    table.set("_output", mlua::Value::Nil)?;
-    table.set("_flags", lua.create_table()?)?;
-    table.set("_optimize", mlua::Value::Nil)?;
-    table.set("_debug", false)?;
-    table.set("_warnings", mlua::Value::Nil)?;
-    table.set("_build_system", "raw")?;
-
-    let metatable = lua.create_table()?;
-
-    // compiler method
-    let compiler_fn = lua.create_function(|_lua, (table, compiler): (LuaTable, i32)| {
+/// @desc Sets the compiler to use for the build.
+/// @param compiler integer (use build.COMPILER.GCC or build.COMPILER.CLANG)
+/// @return table (returns self for method chaining)
+pub fn compiler_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, compiler): (LuaTable, i32)| {
         if Compiler::from_int(compiler).is_none() {
             return Err(LuaError::RuntimeError("Invalid compiler".into()));
         }
         table.set("_compiler", compiler)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // std method
-    let std_fn = lua.create_function(|_lua, (table, std): (LuaTable, String)| {
+/// @desc Sets the C standard to compile against.
+/// @param std string (use build.c.STD.C99, build.c.STD.C11, etc.)
+/// @return table (returns self for method chaining)
+pub fn std_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, std): (LuaTable, String)| {
         table.set("_std", std)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // files method
-    let files_fn = lua.create_function(|lua, (table, files): (LuaTable, LuaTable)| {
+/// @desc Specifies the source files to compile.
+/// @param files table (array of file paths)
+/// @return table (returns self for method chaining)
+pub fn files_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, (table, files): (LuaTable, LuaTable)| {
         let file_list = table_to_strings(lua, &files)?;
         let files_table = lua.create_table()?;
         for (i, file) in file_list.iter().enumerate() {
@@ -87,34 +122,42 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         }
         table.set("_files", files_table)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // output method
-    let output_fn = lua.create_function(|_lua, (table, name): (LuaTable, String)| {
+/// @desc Sets the output executable name.
+/// @param name string (output file name)
+/// @return table (returns self for method chaining)
+pub fn output_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, name): (LuaTable, String)| {
         table.set("_output", name)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // optimize method
-    let optimize_fn = lua.create_function(|_lua, (table, level): (LuaTable, String)| {
+pub fn optimize_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, level): (LuaTable, String)| {
         table.set("_optimize", level)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // debug method
-    let debug_fn = lua.create_function(|_lua, (table, enabled): (LuaTable, bool)| {
+pub fn debug_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, enabled): (LuaTable, bool)| {
         table.set("_debug", enabled)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // warnings method
-    let warnings_fn = lua.create_function(|_lua, (table, level): (LuaTable, String)| {
+pub fn warnings_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, level): (LuaTable, String)| {
         table.set("_warnings", level)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // include_dirs method
-    let include_dirs_fn = lua.create_function(|lua, (table, dirs): (LuaTable, LuaTable)| {
+pub fn include_dirs_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, (table, dirs): (LuaTable, LuaTable)| {
         let dir_list = table_to_strings(lua, &dirs)?;
         let dirs_table = lua.create_table()?;
         for (i, dir) in dir_list.iter().enumerate() {
@@ -122,10 +165,11 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         }
         table.set("_include_dirs", dirs_table)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // defines method
-    let defines_fn = lua.create_function(|lua, (table, defs): (LuaTable, LuaTable)| {
+pub fn defines_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, (table, defs): (LuaTable, LuaTable)| {
         let def_list = table_to_strings(lua, &defs)?;
         let defs_table = lua.create_table()?;
         for (i, def) in def_list.iter().enumerate() {
@@ -133,10 +177,11 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         }
         table.set("_defines", defs_table)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // link_libs method
-    let link_libs_fn = lua.create_function(|lua, (table, libs): (LuaTable, LuaTable)| {
+pub fn link_libs_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, (table, libs): (LuaTable, LuaTable)| {
         let lib_list = table_to_strings(lua, &libs)?;
         let libs_table = lua.create_table()?;
         for (i, lib) in lib_list.iter().enumerate() {
@@ -144,10 +189,11 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         }
         table.set("_link_libs", libs_table)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // flags method
-    let flags_fn = lua.create_function(|lua, (table, flags): (LuaTable, LuaTable)| {
+pub fn flags_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, (table, flags): (LuaTable, LuaTable)| {
         let flag_list = table_to_strings(lua, &flags)?;
         let flags_table = lua.create_table()?;
         for (i, flag) in flag_list.iter().enumerate() {
@@ -155,10 +201,11 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         }
         table.set("_flags", flags_table)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // find_library method
-    let find_library_fn = lua.create_function(|_lua, (table, lib_name): (LuaTable, String)| {
+pub fn find_library_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, lib_name): (LuaTable, String)| {
         let lib_info = find_library(&lib_name)?;
 
         // Add include directories
@@ -214,10 +261,11 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         }
 
         Ok(table)
-    })?;
+    })
+}
 
-    // generator method
-    let generator_fn = lua.create_function(|_lua, (table, gen_name): (LuaTable, String)| {
+pub fn generator_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|_lua, (table, gen_name): (LuaTable, String)| {
         if BuildSystem::from_string(&gen_name).is_none() {
             return Err(LuaError::RuntimeError(format!(
                 "Invalid generator: {}",
@@ -226,10 +274,11 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
         }
         table.set("_build_system", gen_name)?;
         Ok(table)
-    })?;
+    })
+}
 
-    // generate method
-    let generate_fn = lua.create_function(|lua, table: LuaTable| {
+pub fn generate_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, table: LuaTable| {
         let build_system_str: String = table.get("_build_system")?;
         let build_system = BuildSystem::from_string(&build_system_str)
             .ok_or_else(|| LuaError::RuntimeError("Invalid build system".into()))?;
@@ -316,10 +365,11 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
                 exit_code: Some(0),
             },
         )
-    })?;
+    })
+}
 
-    // run method
-    let run_fn = lua.create_function(|lua, table: LuaTable| {
+pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, table: LuaTable| {
         let compiler_int: i32 = table.get("_compiler")?;
         let compiler = Compiler::from_int(compiler_int)
             .ok_or_else(|| LuaError::RuntimeError("Invalid compiler".into()))?;
@@ -508,7 +558,44 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
 
         let result = execute_build(compiler.as_str(), &args)?;
         result_to_lua_table(lua, &result)
-    })?;
+    })
+}
+
+/// Create C build task table
+pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
+    let table = lua.create_table()?;
+    table.set("_language", "c")?;
+    table.set("_compiler", 0i32)?; // Default: GCC
+    table.set("_std", "c11")?; // Default: C11
+    table.set("_files", lua.create_table()?)?;
+    table.set("_link_libs", lua.create_table()?)?;
+    table.set("_include_dirs", lua.create_table()?)?;
+    table.set("_lib_paths", lua.create_table()?)?;
+    table.set("_defines", lua.create_table()?)?;
+    table.set("_output", mlua::Value::Nil)?;
+    table.set("_flags", lua.create_table()?)?;
+    table.set("_optimize", mlua::Value::Nil)?;
+    table.set("_debug", false)?;
+    table.set("_warnings", mlua::Value::Nil)?;
+    table.set("_build_system", "raw")?;
+
+    let metatable = lua.create_table()?;
+
+    let compiler_fn = compiler_method(lua)?;
+    let std_fn = std_method(lua)?;
+    let files_fn = files_method(lua)?;
+    let output_fn = output_method(lua)?;
+    let optimize_fn = optimize_method(lua)?;
+    let debug_fn = debug_method(lua)?;
+    let warnings_fn = warnings_method(lua)?;
+    let include_dirs_fn = include_dirs_method(lua)?;
+    let defines_fn = defines_method(lua)?;
+    let link_libs_fn = link_libs_method(lua)?;
+    let flags_fn = flags_method(lua)?;
+    let find_library_fn = find_library_method(lua)?;
+    let generator_fn = generator_method(lua)?;
+    let generate_fn = generate_method(lua)?;
+    let run_fn = run_method(lua)?;
 
     let index_table = lua.create_table()?;
     index_table.set("compiler", compiler_fn)?;

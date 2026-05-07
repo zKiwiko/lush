@@ -1,3 +1,12 @@
+macro_rules! regv {
+    ($table:expr, $lua:expr, $( $key:expr => $value:expr ),* $(,)?) => {{
+        $(
+            $table.set($key, $value).unwrap();
+        )*
+    }};
+}
+
+#[macro_use]
 mod api;
 mod config;
 mod runtime;

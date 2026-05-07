@@ -6,14 +6,22 @@ pub mod objc;
 
 use mlua::prelude::*;
 
+// Compiler constants
+/// @desc GCC compiler
+pub const COMPILER_GCC: i32 = 0;
+/// @desc Clang compiler
+pub const COMPILER_CLANG: i32 = 1;
+
 /// Register build API with Lua
 pub fn register(lua: &Lua) -> LuaResult<()> {
     let build_table = lua.create_table()?;
 
     // Compiler constants
     let compiler_table = lua.create_table()?;
-    compiler_table.set("GCC", 0i32)?;
-    compiler_table.set("CLANG", 1i32)?;
+    regv!(compiler_table, lua,
+        "GCC" => COMPILER_GCC,
+        "CLANG" => COMPILER_CLANG
+    );
     build_table.set("COMPILER", compiler_table)?;
 
     // Language constructors - we'll register constants separately
