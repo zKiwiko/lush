@@ -1,36 +1,18 @@
 use mlua::prelude::*;
 
-use std::string;
-
-/// ## Usage
-/// `str.trim(string) -> string`
-///
-/// ## Description
-/// Trims leading and trailing whitespace from the input string.
-///
-/// ## Example
-/// ```lua
-/// local result = str.trim("   Hello, World!   ")
-/// print(result) -- "Hello, World!"
-/// ```
+/// @desc Trims leading and trailing whitespace from the input string.
+/// @param string string
+/// @return string
 #[allow(non_snake_case)]
 #[inline(always)]
 pub fn Trim(_lua: &Lua, string: String) -> mlua::Result<String> {
     Ok(string.trim().to_string())
 }
 
-/// ## Usage
-/// `str.split(string, sep) -> table`
-///
-/// ## Description
-/// Splits a string into a table of substrings based on the specified separator. If the separator is an empty string, it defaults to splitting on whitespace.
-///
-/// ## Example:
-/// ```lua
-/// local result = str.split("Hello, World!", ", ")
-/// result[1] -- "Hello"
-/// result[2] -- "World!"
-/// ```
+/// @desc Splits a string into a table of substrings based on the specified separator. If the separator is an empty string, it defaults to splitting on whitespace.
+/// @param string string
+/// @param seperator string
+/// @return table
 #[allow(non_snake_case)]
 #[inline(always)]
 pub fn Split(_lua: &Lua, (string, sep): (String, String)) -> mlua::Result<Vec<String>> {

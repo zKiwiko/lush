@@ -42,7 +42,6 @@ impl Runtime {
 
         runtime
     }
-
     pub fn execute(
         &self,
         command: &str,
@@ -77,10 +76,9 @@ impl Runtime {
         // run the requested command (registered by lush.lua)
         self.run_command(command, arguments)
     }
-
     /// Load and execute the user's `lush.lua` but do not invoke any registered command.
     /// Returns Ok(true) if the script executed successfully.
-    pub fn load_init_only(&self, file_path: Option<String>) -> LuaResult<bool> {
+    pub fn dry_execute(&self, file_path: Option<String>) -> LuaResult<bool> {
         // determine which file to load
         let script_path = match file_path {
             Some(path) => PathBuf::from(path),
@@ -91,11 +89,7 @@ impl Runtime {
         let src = match fs::read_to_string(&script_path) {
             Ok(s) => s,
             Err(err) => {
-                eprintln!(
-                    "could not read lush.lua ({}): {}",
-                    script_path.display(),
-                    err
-                );
+                eprintln!("could not read file ({}): {}", script_path.display(), err);
                 return Ok(false);
             }
         };
@@ -108,7 +102,6 @@ impl Runtime {
 
         Ok(true)
     }
-
     pub fn run_command(&self, command: &str, arguments: &[String]) -> LuaResult<bool> {
         // First, try to execute as a task (with dependency resolution)
         if let Ok(success) = self.execute_task(command, arguments) {
@@ -138,7 +131,6 @@ impl Runtime {
             Err(_) => Ok(false),
         }
     }
-
     fn execute_task(&self, task_name: &str, arguments: &[String]) -> LuaResult<bool> {
         let task_registry = self.lua.named_registry_value::<mlua::Table>("lush_tasks")?;
 
@@ -160,7 +152,6 @@ impl Runtime {
             Err(_) => Err(LuaError::RuntimeError("task not found".into())),
         }
     }
-
     fn visit_task(
         &self,
         task_name: &str,
@@ -218,7 +209,6 @@ impl Runtime {
         visited.insert(task_name.to_string());
         Ok(())
     }
-
     fn load_api(&self) {
         // sys module
         if let Ok(sys_module) = self.lua.create_table() {
@@ -255,7 +245,7 @@ impl Runtime {
             reg!(fmt_module, self.lua,
                 "print" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::Print(lua, args),
                 "string" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::String(lua, args),
-                "path_join" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::Path(lua, args),
+                "path_join" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::path_join(lua, args),
 
                 "to_hex" => |lua, value: mlua::Value| crate::api::fmt::to_hex(lua, value),
                 "to_bin" => |lua, value: mlua::Value| crate::api::fmt::to_binary(lua, value),
@@ -275,7 +265,7 @@ impl Runtime {
             let _ = self.lua.globals().set("json", json_module);
         }
 
-        // str module
+        // string module additions
         if let Ok(str_module) = self.lua.create_table() {
             reg!(str_module, self.lua,
                 "trim" => |lua, string: String| str::Trim(lua, string),

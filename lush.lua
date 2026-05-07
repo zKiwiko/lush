@@ -1,8 +1,9 @@
--- lush install <path>
----@param where string
----@return nil
-lush.task("install", function(where)
+lush.task("cargo:install", function(where)
     sys.exec("cp ./target/release/lush " .. where)
+end)
+
+lush.task("cargo:fix", function()
+    sys.exec("cargo fix --bin \"lush\" -p lush")
 end)
 
 lush.task("book:build", function()
@@ -11,5 +12,5 @@ end)
 
 lush.task("echo", function(...)
     local args = table.concat({ ... }, " ")
-    print(args)
+    fmt.print("{}", str.trim(args))
 end)

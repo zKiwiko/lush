@@ -41,7 +41,7 @@ fn main() {
     }
 
     if cli.dry {
-        match runtime.load_init_only(cli.path) {
+        match runtime.dry_execute(cli.path) {
             Ok(true) => return,
             Ok(false) => std::process::exit(1),
             Err(err) => {
