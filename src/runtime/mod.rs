@@ -3,7 +3,7 @@ use mlua::prelude::*;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::api::{build, json, system};
+use crate::api::{build, json, str, system};
 
 const LUSH_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -233,11 +233,11 @@ impl Runtime {
                 "mv"     => |_, (src, dst): (String, String)| system::mv(src, dst),
                 "cwd"    => |_, ()| system::pwd(),
                 "envs"   => |lua, ()| system::envs(lua),
-                "os"    => |_, ()| system::os(),
-                "arch"  => |_, ()| system::arch(),
-                "which" => |_, command: String| system::which(command),
-                "grep"  => |lua, (pattern, text): (String, String)| system::grep(lua, pattern, text),
-                "popen" => |_, command: String| system::popen(command),
+                "os"     => |_, ()| system::os(),
+                "arch"   => |_, ()| system::arch(),
+                "which"  => |_, command: String| system::which(command),
+                "grep"   => |lua, (pattern, text): (String, String)| system::grep(lua, pattern, text),
+                "popen"  => |_, command: String| system::popen(command),
             );
 
             regv!(sys_module, self.lua,
@@ -254,10 +254,17 @@ impl Runtime {
         if let Ok(fmt_module) = self.lua.create_table() {
             reg!(fmt_module, self.lua,
                 "print" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::Print(lua, args),
+                "string" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::String(lua, args),
+                "path_join" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::Path(lua, args),
+
+                "to_hex" => |lua, value: mlua::Value| crate::api::fmt::to_hex(lua, value),
+                "to_bin" => |lua, value: mlua::Value| crate::api::fmt::to_binary(lua, value),
+                "to_oct" => |lua, value: mlua::Value| crate::api::fmt::to_octal(lua, value)
             );
             let _ = self.lua.globals().set("fmt", fmt_module);
         }
 
+        // JSON module
         if let Ok(json_module) = self.lua.create_table() {
             reg!(json_module, self.lua,
                 "read_file" => |lua, path: String| json::read_file(lua, path),
@@ -266,6 +273,15 @@ impl Runtime {
                 "write_string" => |_, value: mlua::Value| json::write_string(value),
             );
             let _ = self.lua.globals().set("json", json_module);
+        }
+
+        // str module
+        if let Ok(str_module) = self.lua.create_table() {
+            reg!(str_module, self.lua,
+                "trim" => |lua, string: String| str::Trim(lua, string),
+                "split" => |lua, (string, sep): (String, String)| str::Split(lua, (string, sep)),
+            );
+            let _ = self.lua.globals().set("str", str_module);
         }
 
         // ensure a table to hold registered commands (persists functions)
