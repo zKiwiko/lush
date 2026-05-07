@@ -18,9 +18,8 @@ end)
 lush.task("c", function(...)
     fmt.print("Running C task with args: {}", table.concat({ ... }, " "))
     local result = build.c()
-        :compiler(build.COMPILER.GCC) -- Default
-        :optimize(build.c.OPTIMIZE.O2)
-        :files({ "main.c" })          -- Glob pattern
+        :generator(build.c.GENERATOR.NINJA) -- Use Ninja generator
+        :files({ "main.c" })                -- Glob pattern
         :output("main")
         :run()
 
