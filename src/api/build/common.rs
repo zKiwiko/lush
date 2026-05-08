@@ -13,6 +13,7 @@ pub struct LibraryInfo {
 /// Supported compilers
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Compiler {
+    Gxx,
     Gcc,
     Clang,
 }
@@ -20,6 +21,7 @@ pub enum Compiler {
 impl Compiler {
     pub fn as_str(&self) -> &'static str {
         match self {
+            Compiler::Gxx => "g++",
             Compiler::Gcc => "gcc",
             Compiler::Clang => "clang",
         }
@@ -27,8 +29,9 @@ impl Compiler {
 
     pub fn from_int(val: i32) -> Option<Self> {
         match val {
-            0 => Some(Compiler::Gcc),
-            1 => Some(Compiler::Clang),
+            0 => Some(Compiler::Gxx),
+            1 => Some(Compiler::Gcc),
+            2 => Some(Compiler::Clang),
             _ => None,
         }
     }

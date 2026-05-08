@@ -1,37 +1,30 @@
-macro_rules! regv {
-    ($table:expr, $lua:expr, $( $key:expr => $value:expr ),* $(,)?) => {{
-        $(
-            $table.set($key, $value).unwrap();
-        )*
-    }};
-}
-
-#[macro_use]
 mod api;
 mod config;
 mod runtime;
 use clap::Parser;
 
 #[derive(Parser)]
-#[command(name = "Lush", version, about = "A Lua-based build and command runner", version = env!("CARGO_PKG_VERSION"))]
+#[command(name = "Lush", version, about = "A modern lua runtime & task runner", version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
-    // Command to run (registered by lush.lua)
+    // Task to execute
     command: Option<String>,
 
     // Arguments to pass to the command
     #[arg(short, long, num_args = 1..)]
     arguments: Vec<String>,
 
-    /// Path to lush.lua file (default: ./lush.lua)
+    /// Custom path to a lua file for execution (default: ./lush.lua)
     #[arg(short, long)]
     path: Option<String>,
 
+    /// Run without executing a task.
     #[arg(long)]
     dry: bool,
 
     #[arg(long)]
     verbose: bool,
 
+    /// Enable LuaJIT's C FFI module (default: false)
     #[arg(short, long)]
     c: bool,
 }
@@ -43,7 +36,7 @@ fn main() {
     if cli.verbose {
         println!("Lush version {}", env!("CARGO_PKG_VERSION"));
         println!(
-            "Using lush.lua at: {}",
+            "Using lua file at: {}",
             cli.path.as_deref().unwrap_or("./lush.lua")
         );
         config::set_verbose();
@@ -70,7 +63,7 @@ fn main() {
             }
         }
     } else {
-        eprintln!("error: no command specified");
+        eprintln!("error: no command specified. If this is intentional, add flag '--dry'.");
         std::process::exit(1);
     }
 }

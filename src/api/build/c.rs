@@ -5,7 +5,17 @@ use super::common::{
 use super::generators::{
     BuildSystem, GeneratorConfig, execute_cmake, execute_ninja, generate_cmake, generate_ninja,
 };
+
+use crate::regv;
+
 use mlua::prelude::*;
+
+/// @desc G++ compiler
+pub const GXX: i32 = 0;
+/// @desc GCC compiler
+pub const GCC: i32 = 1;
+/// @desc Clang compiler
+pub const CLANG: i32 = 2;
 
 // Optimization level constants
 /// @desc Optimization level O0 - no optimization
@@ -32,6 +42,20 @@ pub const STD_C11: &str = "c11";
 pub const STD_C17: &str = "c17";
 /// @desc C2X standard (upcoming C standard)
 pub const STD_C2X: &str = "c2x";
+/// @desc C++98 standard
+pub const STD_CXX98: &str = "c++98";
+/// @desc C++03 standard
+pub const STD_CXX03: &str = "c++03";
+/// @desc C++11 standard
+pub const STD_CXX11: &str = "c++11";
+/// @desc C++14 standard
+pub const STD_CXX14: &str = "c++14";
+/// @desc C++17 standard
+pub const STD_CXX17: &str = "c++17";
+/// @desc C++20 standard
+pub const STD_CXX20: &str = "c++20";
+/// @desc C++23 standard
+pub const STD_CXX23: &str = "c++23";
 
 // Warning level constants
 /// @desc No warnings
@@ -52,10 +76,22 @@ pub const GENERATOR_RAW: &str = "raw";
 pub const GENERATOR_CMAKE: &str = "cmake";
 /// @desc Use Ninja generator
 pub const GENERATOR_NINJA: &str = "ninja";
+/// @desc C language mode
+pub const LANGUAGE_C: &str = "c";
+/// @desc C++ language mode
+pub const LANGUAGE_CPP: &str = "cpp";
+/// @desc Objective-C language mode
+pub const LANGUAGE_OBJC: &str = "objc";
 
 /// Initialize C-specific constants
 pub fn register_constants(lua: &Lua, build_table: &LuaTable) -> LuaResult<()> {
     let c_table = lua.create_table()?;
+
+    regv!(c_table, lua,
+        "GXX" => GXX,
+        "GCC" => GCC,
+        "CLANG" => CLANG
+    );
 
     // Optimization flags
     let opt_table = lua.create_table()?;
@@ -76,7 +112,14 @@ pub fn register_constants(lua: &Lua, build_table: &LuaTable) -> LuaResult<()> {
         "C99" => STD_C99,
         "C11" => STD_C11,
         "C17" => STD_C17,
-        "C2X" => STD_C2X
+        "C2X" => STD_C2X,
+        "CXX98" => STD_CXX98,
+        "CXX03" => STD_CXX03,
+        "CXX11" => STD_CXX11,
+        "CXX14" => STD_CXX14,
+        "CXX17" => STD_CXX17,
+        "CXX20" => STD_CXX20,
+        "CXX23" => STD_CXX23
     );
     c_table.set("STD", std_table)?;
 
@@ -100,12 +143,20 @@ pub fn register_constants(lua: &Lua, build_table: &LuaTable) -> LuaResult<()> {
     );
     c_table.set("GENERATOR", generator_table)?;
 
+    let lang_table = lua.create_table()?;
+    regv!(lang_table, lua,
+        "C" => LANGUAGE_C,
+        "CPP" => LANGUAGE_CPP,
+        "OBJC" => LANGUAGE_OBJC
+    );
+    c_table.set("LANGUAGE", lang_table)?;
+
     build_table.set("c", c_table)?;
     Ok(())
 }
 
 /// @desc Sets the compiler to use for the build.
-/// @param compiler integer (use build.COMPILER.GCC or build.COMPILER.CLANG)
+/// @param compiler integer (use build.c.GXX, build.c.GCC, or build.c.CLANG)
 /// @return table (returns self for method chaining)
 pub fn compiler_method(lua: &Lua) -> LuaResult<LuaFunction> {
     lua.create_function(|_lua, (table, compiler): (LuaTable, i32)| {
@@ -125,6 +176,23 @@ pub fn std_method(lua: &Lua) -> LuaResult<LuaFunction> {
         table.set("_std", std)?;
         Ok(table)
     })
+}
+
+/// @desc Sets the language mode for the task.
+/// @param language string (use build.c.LANGUAGE.C, build.c.LANGUAGE.CPP, or build.c.LANGUAGE.OBJC)
+/// @return table (returns self for method chaining)
+pub fn language_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(
+        |_lua, (table, language): (LuaTable, String)| match language.as_str() {
+            "c" | "cpp" | "objc" => {
+                table.set("_language", language)?;
+                Ok(table)
+            }
+            _ => Err(LuaError::RuntimeError(
+                "Invalid language (expected c, cpp, or objc)".into(),
+            )),
+        },
+    )
 }
 
 /// @desc Specifies the source files to compile.
@@ -205,6 +273,18 @@ pub fn link_libs_method(lua: &Lua) -> LuaResult<LuaFunction> {
             libs_table.set(i + 1, lib.clone())?;
         }
         table.set("_link_libs", libs_table)?;
+        Ok(table)
+    })
+}
+
+pub fn frameworks_method(lua: &Lua) -> LuaResult<LuaFunction> {
+    lua.create_function(|lua, (table, frameworks): (LuaTable, LuaTable)| {
+        let fw_list = table_to_strings(lua, &frameworks)?;
+        let fw_table = lua.create_table()?;
+        for (i, fw) in fw_list.iter().enumerate() {
+            fw_table.set(i + 1, fw.clone())?;
+        }
+        table.set("_frameworks", fw_table)?;
         Ok(table)
     })
 }
@@ -332,6 +412,12 @@ pub fn generate_method(lua: &Lua) -> LuaResult<LuaFunction> {
 
         let lib_paths_table: LuaTable = table.get("_lib_paths")?;
         let lib_paths = table_to_strings(lua, &lib_paths_table)?;
+        let frameworks = match table.get::<mlua::Value>("_frameworks")? {
+            mlua::Value::Table(t) => table_to_strings(lua, &t)?,
+            mlua::Value::Nil => vec![],
+            _ => return Err(LuaError::RuntimeError("Invalid frameworks type".into())),
+        };
+        let language: String = table.get("_language")?;
 
         let optimize: Option<String> = match table.get("_optimize")? {
             mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
@@ -342,7 +428,7 @@ pub fn generate_method(lua: &Lua) -> LuaResult<LuaFunction> {
         let debug: bool = table.get("_debug")?;
 
         let config = GeneratorConfig {
-            language: "c".to_string(),
+            language,
             files,
             includes,
             lib_paths,
@@ -352,7 +438,7 @@ pub fn generate_method(lua: &Lua) -> LuaResult<LuaFunction> {
             optimize,
             debug,
             output_name,
-            frameworks: vec![],
+            frameworks,
         };
 
         match build_system {
@@ -423,6 +509,12 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
 
             let lib_paths_table: LuaTable = table.get("_lib_paths")?;
             let lib_paths = table_to_strings(lua, &lib_paths_table)?;
+            let frameworks = match table.get::<mlua::Value>("_frameworks")? {
+                mlua::Value::Table(t) => table_to_strings(lua, &t)?,
+                mlua::Value::Nil => vec![],
+                _ => return Err(LuaError::RuntimeError("Invalid frameworks type".into())),
+            };
+            let language: String = table.get("_language")?;
 
             let optimize: Option<String> = match table.get("_optimize")? {
                 mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
@@ -433,7 +525,7 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
             let debug: bool = table.get("_debug")?;
 
             let config = GeneratorConfig {
-                language: "c".to_string(),
+                language,
                 files,
                 includes,
                 lib_paths,
@@ -443,7 +535,7 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
                 optimize,
                 debug,
                 output_name: output_name.clone(),
-                frameworks: vec![],
+                frameworks,
             };
 
             // Generate configuration
@@ -487,7 +579,11 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
             return Err(LuaError::RuntimeError("No source files specified".into()));
         }
 
-        let std: String = table.get("_std")?;
+        let std: Option<String> = match table.get("_std")? {
+            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
+            mlua::Value::Nil => None,
+            _ => return Err(LuaError::RuntimeError("Invalid std type".into())),
+        };
         let link_libs_table: LuaTable = table.get("_link_libs")?;
         let link_libs = table_to_strings(lua, &link_libs_table)?;
 
@@ -499,6 +595,12 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
 
         let flags_table: LuaTable = table.get("_flags")?;
         let flags = table_to_strings(lua, &flags_table)?;
+        let frameworks = match table.get::<mlua::Value>("_frameworks")? {
+            mlua::Value::Table(t) => table_to_strings(lua, &t)?,
+            mlua::Value::Nil => vec![],
+            _ => return Err(LuaError::RuntimeError("Invalid frameworks type".into())),
+        };
+        let language: String = table.get("_language")?;
 
         let output: Option<String> = match table.get("_output")? {
             mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
@@ -523,8 +625,9 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
         // Build command
         let mut args = Vec::new();
 
-        // Add standard
-        args.push(format!("-std={}", std));
+        if let Some(std) = &std {
+            args.push(format!("-std={}", std));
+        }
 
         // Add source files
         for file in &files {
@@ -539,6 +642,12 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
         // Add preprocessor defines
         for def in &defines {
             args.push(format!("-D{}", def));
+        }
+        if language == "objc" {
+            for framework in &frameworks {
+                args.push("-framework".to_string());
+                args.push(framework.clone());
+            }
         }
 
         // Add optimization
@@ -578,12 +687,12 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
     })
 }
 
-/// Create C build task table
+/// Create unified C-family build task table
 pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     let table = lua.create_table()?;
     table.set("_language", "c")?;
     table.set("_compiler", 0i32)?; // Default: GCC
-    table.set("_std", "c11")?; // Default: C11
+    table.set("_std", "c11")?;
     table.set("_files", lua.create_table()?)?;
     table.set("_link_libs", lua.create_table()?)?;
     table.set("_include_dirs", lua.create_table()?)?;
@@ -594,11 +703,13 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     table.set("_optimize", mlua::Value::Nil)?;
     table.set("_debug", false)?;
     table.set("_warnings", mlua::Value::Nil)?;
+    table.set("_frameworks", lua.create_table()?)?;
     table.set("_build_system", "raw")?;
 
     let metatable = lua.create_table()?;
 
     let compiler_fn = compiler_method(lua)?;
+    let language_fn = language_method(lua)?;
     let std_fn = std_method(lua)?;
     let files_fn = files_method(lua)?;
     let output_fn = output_method(lua)?;
@@ -608,6 +719,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     let include_dirs_fn = include_dirs_method(lua)?;
     let defines_fn = defines_method(lua)?;
     let link_libs_fn = link_libs_method(lua)?;
+    let frameworks_fn = frameworks_method(lua)?;
     let flags_fn = flags_method(lua)?;
     let find_library_fn = find_library_method(lua)?;
     let generator_fn = generator_method(lua)?;
@@ -616,6 +728,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
 
     let index_table = lua.create_table()?;
     index_table.set("compiler", compiler_fn)?;
+    index_table.set("language", language_fn)?;
     index_table.set("std", std_fn)?;
     index_table.set("files", files_fn)?;
     index_table.set("output", output_fn)?;
@@ -625,6 +738,7 @@ pub fn create_task(lua: &Lua) -> LuaResult<LuaTable> {
     index_table.set("include_dirs", include_dirs_fn)?;
     index_table.set("defines", defines_fn)?;
     index_table.set("link_libs", link_libs_fn)?;
+    index_table.set("frameworks", frameworks_fn)?;
     index_table.set("flags", flags_fn)?;
     index_table.set("find_library", find_library_fn)?;
     index_table.set("generator", generator_fn)?;

@@ -1,8 +1,12 @@
 # Overview
 
-Lush is a lightweight task runner and pseudo-build tool written in Rust, configured entirely in Lua (JIT). It combines the simplicity of shell scripting with the power and flexibility of a real programming language.
+Lush is a lightweight modernized Lua runtime written in Rust, configured entirely in Lua. It gives the Lua language a modern API to allow its capabilities to soar in potential.
+Its API is still in development, its structure & features may minimally or drastically.
 
-Think of it as **Make meets Lua** — you get task dependencies, a lua runtime with modern features, and native scripting without the (truly) cryptic syntax or limitations of traditional build systems.
+Lush is - although - intended to be a Lua based task runner. By default, Lush uses [LuaJIT](https://luajit.org/) for maximum preformance and its C interop. To use other versions of Lua
+(e.g `5.4`), you will have to build it with the corresponding `mlua` flag.
+
+# Command options
 
 # Building
 
@@ -22,7 +26,7 @@ cp ./target/release/lush /usr/bin/lush
 
 # Quick Examples
 
-## C File Compilation
+## C File Compilation (Build API)
 
 **main.c**
 
@@ -40,7 +44,7 @@ int main(int argc, char* argv[]) {
 ```lua
 lush.task("build", function()
     local result = build.c()
-                    :compiler(build.COMPILER.GCC) -- Default
+                    :compiler(build.c.GCC) -- Default
                     :optimize(build.c.OPTIMIZE.O2)
                     :files( {"main.c"} )   -- Glob pattern
                     :output("main")

@@ -15,6 +15,8 @@ def split_build_constant(const_name):
         return ("WARNINGS", const_name[len("WARNINGS_"):])
     if const_name.startswith("GENERATOR_"):
         return ("GENERATOR", const_name[len("GENERATOR_"):])
+    if const_name.startswith("LANGUAGE_"):
+        return ("LANGUAGE", const_name[len("LANGUAGE_"):])
     return None
 
 # Map of (module, func_name) -> metadata

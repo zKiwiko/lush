@@ -4,24 +4,9 @@ use std::path::PathBuf;
 use std::{env, fs};
 
 use crate::api::{build, json, str, system};
+use crate::{reg, regv};
 
 const LUSH_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-macro_rules! reg {
-    ($table:expr, $lua:expr, $( $name:expr => $fn:expr ),* $(,)?) => {{
-        $(
-            $table.set($name, $lua.create_function($fn).unwrap()).unwrap();
-        )*
-    }};
-}
-
-macro_rules! regv {
-    ($table:expr, $lua:expr, $( $key:expr => $value:expr ),* $(,)?) => {{
-        $(
-            $table.set($key, $value).unwrap();
-        )*
-    }};
-}
 
 pub struct Runtime {
     lua: Lua,
