@@ -3,7 +3,7 @@ use mlua::prelude::*;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::api::{build, json, str, system};
+use crate::api::{build, json, string, system};
 use crate::{reg, regv};
 
 const LUSH_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -251,12 +251,11 @@ impl Runtime {
         }
 
         // string module additions
-        if let Ok(str_module) = self.lua.create_table() {
+        if let Ok(str_module) = self.lua.globals().get::<mlua::Table>("string") {
             reg!(str_module, self.lua,
-                "trim" => |lua, string: String| str::Trim(lua, string),
-                "split" => |lua, (string, sep): (String, String)| str::Split(lua, (string, sep)),
+                "trim" => |lua, string: String| string::Trim(lua, string),
+                "split" => |lua, (string, sep): (String, String)| string::Split(lua, (string, sep)),
             );
-            let _ = self.lua.globals().set("str", str_module);
         }
 
         // ensure a table to hold registered commands (persists functions)

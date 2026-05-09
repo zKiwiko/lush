@@ -1,4 +1,3 @@
 {
-  "Lua.diagnostics.globals": ["sys", "lush", "json", "fmt", "build", "str"],
   "Lua.workspace.library": ["./lua_stubs"]
 }

@@ -3,6 +3,10 @@ import re
 from pathlib import Path
 from collections import defaultdict
 
+def first_type_token(type_and_desc):
+    """Extract Lua type token from '@param' or '@return' text."""
+    return type_and_desc.strip().split()[0] if type_and_desc.strip() else "any"
+
 def split_build_constant(const_name):
     """Map flat Rust constant names to nested Lua paths."""
     if const_name.startswith("COMPILER_"):
@@ -30,8 +34,8 @@ for rs_file in Path("src/api").rglob("*.rs"):
 
     content = rs_file.read_text()
 
-    # Find doc comment blocks followed by pub fn
-    pattern = r'((?:\/\/\/.*\n)*)\s*(?:#\[.*?\]\s*)*(?:pub fn|pub async fn)\s+(\w+)'
+    # Find doc comment blocks followed by fn (public or private)
+    pattern = r'((?:\/\/\/.*\n)*)\s*(?:#\[.*?\]\s*)*(?:(?:pub\s+)?(?:async\s+)?fn)\s+(\w+)'
     for match in re.finditer(pattern, content):
         doc_lines = match.group(1)
         func_name = match.group(2)
@@ -43,8 +47,11 @@ for rs_file in Path("src/api").rglob("*.rs"):
             meta['desc'] = desc_match.group(1).strip()
 
         params = []
-        for param_match in re.finditer(r'\/\/\/\s*@param\s+(\w+)\s+(.+)', doc_lines):
-            params.append((param_match.group(1), param_match.group(2).strip()))
+        for param_match in re.finditer(r'\/\/\/\s*@param\s+([A-Za-z_]\w*\??)\s+(.+)', doc_lines):
+            raw_param_name = param_match.group(1)
+            param_name = raw_param_name.rstrip("?")
+            param_optional = raw_param_name.endswith("?")
+            params.append((param_name, param_optional, param_match.group(2).strip()))
         if params:
             meta['params'] = params
 
@@ -144,8 +151,11 @@ for rs_file in Path("src/api/build").glob("*.rs"):
             meta['desc'] = desc_match.group(1).strip()
 
         params = []
-        for param_match in re.finditer(r'\/\/\/\s*@param\s+(\w+)\s+(.+)', doc_lines):
-            params.append((param_match.group(1), param_match.group(2).strip()))
+        for param_match in re.finditer(r'\/\/\/\s*@param\s+([A-Za-z_]\w*\??)\s+(.+)', doc_lines):
+            raw_param_name = param_match.group(1)
+            param_name = raw_param_name.rstrip("?")
+            param_optional = raw_param_name.endswith("?")
+            params.append((param_name, param_optional, param_match.group(2).strip()))
         if params:
             meta['params'] = params
 
@@ -162,6 +172,7 @@ for rs_file in Path("src/api/build").glob("*.rs"):
 runtime_src = Path("src/runtime/mod.rs").read_text()
 reg_mapping = defaultdict(dict)  # module -> {lua_name: rust_func_name}
 
+# Modules created via create_table() and then assigned to globals.
 module_blocks = re.finditer(
     r'if let Ok\((?P<table>\w+)_module\) = self\.lua\.create_table\(\) \{(?P<body>.*?)\n\s*\);',
     runtime_src, re.S
@@ -175,6 +186,63 @@ for m in module_blocks:
         lua_name = func_match.group(1)
         rust_func = func_match.group(3)
         reg_mapping[table][lua_name] = rust_func
+
+# Existing global modules that are extended in place (e.g. Lua's built-in `string`).
+global_extension_blocks = re.finditer(
+    r'if let Ok\(\w+_module\) = self\.lua\.globals\(\)\.get::<mlua::Table>\("(?P<module>[^"]+)"\) \{(?P<body>.*?)\n\s*\);',
+    runtime_src, re.S
+)
+
+for m in global_extension_blocks:
+    module = m.group("module")
+    body = m.group("body")
+    # Extract "lua_name" => |...| path::to::FunctionName(...)
+    for func_match in re.finditer(r'"([^"]+)"\s*=>\s*\|[^|]*\|\s*(?:\w+::)*(\w+)::(\w+)', body):
+        lua_name = func_match.group(1)
+        rust_func = func_match.group(3)
+        reg_mapping[module][lua_name] = rust_func
+
+# Parse module loaders implemented outside runtime (e.g. src/api/lush.rs::load).
+# Supports direct function refs in reg!, such as: "task" => task
+for rs_file in Path("src/api").rglob("*.rs"):
+    if "build" in rs_file.parts:
+        continue
+    content = rs_file.read_text()
+
+    loader_blocks = re.finditer(
+        r'if let Ok\((?P<var>\w+)_module\) = lua\.create_table\(\) \{(?P<body>.*?)\n\s*\}',
+        content,
+        re.S,
+    )
+
+    for block in loader_blocks:
+        var = block.group("var")
+        body = block.group("body")
+
+        # Determine Lua module name from globals().set("<module>", <var>_module)
+        mod_match = re.search(
+            rf'lua\.globals\(\)\.set\("(?P<module>[^"]+)",\s*{re.escape(var)}_module\)',
+            body,
+        )
+        if not mod_match:
+            continue
+        module = mod_match.group("module")
+
+        # Find reg!(<var>_module, lua, ... );
+        reg_match = re.search(
+            rf'reg!\(\s*{re.escape(var)}_module\s*,\s*lua\s*,(?P<entries>.*?)\);\s*',
+            body,
+            re.S,
+        )
+        if not reg_match:
+            continue
+        entries = reg_match.group("entries")
+
+        # Direct function refs: "name" => function_name
+        for func_match in re.finditer(r'"([^"]+)"\s*=>\s*(\w+)', entries):
+            lua_name = func_match.group(1)
+            rust_func = func_match.group(2)
+            reg_mapping[module][lua_name] = rust_func
 
 # Generate stubs
 stubs = []
@@ -199,11 +267,29 @@ for module in sorted(reg_mapping.keys()):
             stubs.append(f"---@desc {meta['desc']}")
 
         if 'params' in meta:
-            for param_name, param_type in meta['params']:
-                stubs.append(f"---@param {param_name} {param_type}")
+            for param_name, param_optional, param_type in meta['params']:
+                optional_suffix = "?" if param_optional else ""
+                stubs.append(f"---@param {param_name}{optional_suffix} {param_type}")
 
         if 'return' in meta:
             stubs.append(f"---@return {meta['return']}")
+
+        # Emit overload for signatures where optional params appear before required ones.
+        # Example: f(name, depends?, handler) -> overload f(name, handler)
+        if 'params' in meta:
+            params = meta['params']
+            has_optional_before_required = any(
+                param_optional and any(not p2[1] for p2 in params[i + 1 :])
+                for i, (_, param_optional, _) in enumerate(params)
+            )
+            if has_optional_before_required:
+                overload_parts = []
+                for param_name, param_optional, param_type in params:
+                    if param_optional:
+                        continue
+                    overload_parts.append(f"{param_name}: {first_type_token(param_type)}")
+                overload_sig = ", ".join(overload_parts)
+                stubs.append(f"---@overload fun({overload_sig})")
 
         # Build function signature
         if 'params' in meta:
@@ -298,8 +384,9 @@ if build_methods or build_constants:
                     stubs.append(f"---@desc {meta['desc']}")
 
                 if 'params' in meta:
-                    for param_name, param_type in meta['params']:
-                        stubs.append(f"---@param {param_name} {param_type}")
+                    for param_name, param_optional, param_type in meta['params']:
+                        optional_suffix = "?" if param_optional else ""
+                        stubs.append(f"---@param {param_name}{optional_suffix} {param_type}")
 
                 if 'return' in meta:
                     stubs.append(f"---@return {meta['return']}")

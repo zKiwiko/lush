@@ -12,7 +12,7 @@ end)
 
 lush.task("echo", function(...)
     local args = table.concat({ ... }, " ")
-    fmt.print("{}", str.trim(args))
+    fmt.print("{}", string.trim(args))
 end)
 
 lush.task("c", function(...)

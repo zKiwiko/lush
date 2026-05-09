@@ -29,7 +29,6 @@ function fmt.to_hex(value) end
 ---@return string Result
 function fmt.to_oct(value) end
 
-
 -- json module
 ---@class json
 json = {}
@@ -41,21 +40,33 @@ function json.write_file(...) end
 
 function json.write_string(...) end
 
+-- lush module
+---@class lush
+lush = {}
+function lush.rule(...) end
 
--- str module
----@class str
-str = {}
+function lush.target(...) end
+
+---@desc Register a new task for Lush to execute.
+---@param name string Name of the task. This will be used to execute it.
+---@param depends? table Optional. Execute other tasks before this one.
+---@param handler function The function to execute for this task.
+---@overload fun(name: string, handler: function)
+function lush.task(name, depends, handler) end
+
+-- string module
+---@class string
+string = {}
 ---@desc Splits a string into a table of substrings based on the specified separator. If the separator is an empty string, it defaults to splitting on whitespace.
 ---@param string string
 ---@param seperator string
 ---@return table
-function str.split(string, seperator) end
+function string.split(string, seperator) end
 
 ---@desc Trims leading and trailing whitespace from the input string.
 ---@param string string
 ---@return string
-function str.trim(string) end
-
+function string.trim(string) end
 
 -- sys module
 ---@class sys

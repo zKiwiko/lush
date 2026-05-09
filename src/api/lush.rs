@@ -1,3 +1,4 @@
+use crate::reg;
 use mlua::prelude::*;
 
 fn parse_depends(_lua: &Lua, opts: &mlua::Table) -> LuaResult<Vec<String>> {
@@ -55,6 +56,10 @@ fn parse_depends(_lua: &Lua, opts: &mlua::Table) -> LuaResult<Vec<String>> {
     }
 }
 
+/// @desc Register a new task for Lush to execute.
+/// @param name string Name of the task. This will be used to execute it.
+/// @param depends? table Execute other tasks before this one.
+/// @param handler function The function to execute for this task.
 fn task(lua: &Lua, args: mlua::Variadic<mlua::Value>) -> LuaResult<()> {
     if args.is_empty() {
         return Err(LuaError::RuntimeError(
@@ -70,12 +75,14 @@ fn task(lua: &Lua, args: mlua::Variadic<mlua::Value>) -> LuaResult<()> {
     let (depends, handler) = if args.len() == 2 {
         (vec![], &args[1])
     } else if args.len() == 3 {
-        let opts = match &args[1] {
-            mlua::Value::Table(t) => t,
-            _ => return Err(LuaError::RuntimeError("options must be a table".into())),
-        };
-        let deps = parse_depends(lua, opts)?;
-        (deps, &args[2])
+        match &args[1] {
+            mlua::Value::Table(opts) => {
+                let deps = parse_depends(lua, opts)?;
+                (deps, &args[2])
+            }
+            mlua::Value::Nil => (vec![], &args[2]),
+            _ => return Err(LuaError::RuntimeError("options must be a table or nil".into())),
+        }
     } else {
         return Err(LuaError::RuntimeError(
             "task() takes 2 or 3 arguments: name, [opts], handler".into(),
@@ -118,13 +125,20 @@ pub fn load(lua: &Lua) -> LuaResult<()> {
     let task_registry = lua.create_table()?;
     lua.set_named_registry_value("lush_tasks", task_registry)?;
 
-    let lush_module = lua.create_table()?;
+    // let lush_module = lua.create_table()?;
 
-    lush_module.set("task", lua.create_function(task)?)?;
-    lush_module.set("rule", lua.create_function(rule)?)?;
-    lush_module.set("target", lua.create_function(target)?)?;
+    // lush_module.set("task", lua.create_function(task)?)?;
+    // lush_module.set("rule", lua.create_function(rule)?)?;
+    // lush_module.set("target", lua.create_function(target)?)?;
 
-    lua.globals().set("lush", lush_module)?;
+    if let Ok(lush_module) = lua.create_table() {
+        reg!(lush_module, lua,
+            "task" => task,
+            "rule" => rule,
+            "target" => target,
+        );
+        let _ = lua.globals().set("lush", lush_module);
+    }
 
     Ok(())
 }
