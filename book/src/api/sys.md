@@ -1,368 +1,133 @@
 # sys
 
-The `sys` table provides shell-like functions and methods for system operations. Most commands mimic standard Unix utilities.
+System and shell helpers.
 
 ## exec
 
-Executes a command with the user's preferred shell.
-
-On Linux, this may be `zsh`, `bash`, `fish`, etc... \
-On Windows, this will always target command prompt: `cmd`.
+Executes a shell command.
 
 ### Parameters
 
-| Parameter | Type   | Description                                         |
-| --------- | ------ | --------------------------------------------------- |
-| command   | string | The command to be ran. Is always wrapped in quotes. |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| command   | string | Command to run. Must not be empty. |
 
 ### Returns
 
 None
-
-### Example
-
-```lua
-sys.exec("echo 'Hello World!'")
-sys.exec("go run main.go")
-```
 
 ## getenv
 
-Retrieve an environment variable's value. Similar to `echo $VAR` in shell.
+Gets an environment variable value.
 
 ### Parameters
 
-| Parameter | Type   | Description                                     |
-| --------- | ------ | ----------------------------------------------- |
-| key       | string | The name of the `key` to retrieve the value of. |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| var       | string | Environment variable name. |
 
 ### Returns
 
-Returns the `key`'s value as a string if found;\
-Returns a `RuntimeError` if not.
-
-### Example
-
-```lua
-local shell = sys.getenv("SHELL")
-local home = sys.getenv("HOME")
-```
+String value, or runtime error if missing.
 
 ## setenv
 
-Set an environment variable's value.
+Sets an environment variable.
 
 ### Parameters
 
-| Parameter | Type   | Description                          |
-| --------- | ------ | ------------------------------------ |
-| var       | string | The name of the variable to set.     |
-| value     | string | The value to assign to the variable. |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| var       | string | Environment variable name. |
+| value     | string | Value to set. |
 
 ### Returns
 
 None
-
-### Example
-
-```lua
-sys.setenv("MY_VAR", "hello")
-sys.setenv("PATH", "/usr/bin:/usr/local/bin")
-```
 
 ## find
 
-Find files or directories by type. Similar to the `find` command.
+Checks whether a path exists and matches a requested type.
 
 ### Parameters
 
-| Parameter | Type   | Description                                                       |
-| --------- | ------ | ----------------------------------------------------------------- |
-| what      | number | Type to search for: `sys.FILE`, `sys.DIRECTORY`, or `sys.SYMLINK` |
-| name      | string | Pattern or name to search for.                                    |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| what      | number | `sys.FILE`, `sys.DIRECTORY`, or `sys.SYMLINK`. |
+| name      | string | Path to check. |
 
 ### Returns
 
-Returns `true` if found, `false` otherwise.
-
-### Example
-
-```lua
-local files = sys.find(sys.FILE, "lush.lua")
-local dirs = sys.find(sys.DIRECTORY, "src")
-```
+`true` if path exists and matches type, else `false`.
 
 ## mkdir
 
-Create a directory. Similar to `mkdir -p` (creates parent directories as needed).
-
-### Parameters
-
-| Parameter | Type   | Description                  |
-| --------- | ------ | ---------------------------- |
-| path      | string | Path to directory to create. |
-
-### Returns
-
-None
-
-### Example
-
-```lua
-sys.mkdir("build/output")
-sys.mkdir("./tmp/nested/dirs")
-```
+Creates a directory recursively.
 
 ## rm
 
-Remove a file or directory. Similar to `rm -rf`.
-
-### Parameters
-
-| Parameter | Type   | Description                          |
-| --------- | ------ | ------------------------------------ |
-| path      | string | Path to file or directory to remove. |
-
-### Returns
-
-None
-
-### Example
-
-```lua
-sys.rm("build")
-sys.rm("output.o")
-```
+Removes a file or directory recursively.
 
 ## cp
 
-Copy a file or directory. Similar to `cp -r`.
-
-### Parameters
-
-| Parameter | Type   | Description       |
-| --------- | ------ | ----------------- |
-| src       | string | Source path.      |
-| dst       | string | Destination path. |
-
-### Returns
-
-None
-
-### Example
-
-```lua
-sys.cp("main.c", "main.c.bak")
-sys.cp("src", "src_backup")
-```
+Copies a file from `src` to `dst`.
 
 ## mv
 
-Move or rename a file or directory. Similar to `mv`.
+Renames or moves path from `src` to `dst`.
 
-### Parameters
+## cwd
 
-| Parameter | Type   | Description       |
-| --------- | ------ | ----------------- |
-| src       | string | Source path.      |
-| dst       | string | Destination path. |
-
-### Returns
-
-None
-
-### Example
-
-```lua
-sys.mv("old_name.lua", "new_name.lua")
-sys.mv("./output", "./build/output")
-```
-
-## pwd
-
-Get the current working directory. Similar to `pwd`.
-
-### Parameters
-
-None
-
-### Returns
-
-Returns the current working directory as a string.
-
-### Example
-
-```lua
-local current = sys.cwd()
-print("Working in: " .. current)
-```
+Returns current working directory as a string.
 
 ## envs
 
-Get all environment variables as a table.
-
-### Parameters
-
-None
-
-### Returns
-
-Returns a table with all environment variables as key-value pairs.
-
-### Example
-
-```lua
-local all_env = sys.envs()
-for key, value in pairs(all_env) do
-    print(key .. " = " .. value)
-end
-```
+Returns a table of all environment variables.
 
 ## os
 
-Get the operating system name.
-
-### Parameters
-
-None
-
-### Returns
-
-Returns the OS as a string: `"linux"`, `"windows"`, `"macos"`, etc.
-
-### Example
-
-```lua
-local os_name = sys.os()
-if os_name == "windows" then
-    sys.exec("cls")
-else
-    sys.exec("clear")
-end
-```
+Returns OS name string.
 
 ## arch
 
-Get the system architecture.
-
-### Parameters
-
-None
-
-### Returns
-
-Returns the architecture as a string: `"x86_64"`, `"aarch64"`, `"x86"`, etc.
-
-### Example
-
-```lua
-local arch = sys.arch()
-print("Running on: " .. arch)
-```
+Returns architecture string.
 
 ## which
 
-Find the full path to an executable. Similar to `which` command.
-
-### Parameters
-
-| Parameter | Type   | Description         |
-| --------- | ------ | ------------------- |
-| command   | string | Name of executable. |
-
-### Returns
-
-Returns the full path to the executable as a string, or `RuntimeError` if not found.
-
-### Example
-
-```lua
-local gcc_path = sys.which("gcc")
-local node_path = sys.which("node")
-```
+Returns executable path for `command`, or runtime error if not found.
 
 ## grep
 
-Search for text patterns in a string. Similar to the `grep` command.
+Regex search over multiline text.
 
 ### Parameters
 
-| Parameter | Type   | Description                  |
-| --------- | ------ | ---------------------------- |
-| pattern   | string | Regex pattern to search for. |
-| text      | string | Text to search in.           |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| pattern   | string | Regex pattern. |
+| text      | string | Input text. |
 
 ### Returns
 
-Returns a table (array) of matching lines.
-
-### Example
-
-```lua
-local content = sys.read("lush.lua")
-local matches = sys.grep("task", content)
-for i, line in ipairs(matches) do
-    print(line)
-end
-```
+Array table of matching lines.
 
 ## popen
 
-Execute a command and capture its output. Similar to piping output.
-
-### Parameters
-
-| Parameter | Type   | Description         |
-| --------- | ------ | ------------------- |
-| command   | string | Command to execute. |
-
-### Returns
-
-Returns the command's output as a string.
-
-### Example
-
-```lua
-local version = sys.popen("gcc --version")
-print(version)
-```
+Runs command and returns captured stdout as a string.
 
 ## Constants
 
-### FILE
+- `sys.FILE` = `0`
+- `sys.DIRECTORY` = `1`
+- `sys.SYMLINK` = `2`
 
-Constant used with `sys.find()` to search for files.
-
-Real Value: `0`
-
-```lua
-local files = sys.find(sys.FILE, "*.rs")
-```
-
-### DIRECTORY
-
-Constant used with `sys.find()` to search for directories.
-
-Real Value: `1`
+## Example
 
 ```lua
-local dirs = sys.find(sys.DIRECTORY, "src")
-```
+local out = sys.popen("echo hello")
+fmt.print("{}", out)
 
-### SYMLINK
-
-Constant used with `sys.find()` to search for symbolic links.
-
-Real Value: `2`
-
-```lua
-local links = sys.find(sys.SYMLINK, "*")
-```
-
-### VERSION
-
-The Lush version string. Comes from `CARGO_PKG_VERSION` environment variable.
-
-```lua
-print("Lush version: " .. sys.VERSION)
+if sys.find(sys.FILE, "lush.lua") then
+  fmt.print("found lush.lua")
+end
 ```

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-610e011b.js";
+            window.path_to_searchindex_js = "../searchindex-ae252a17.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-16fd47c7.js"></script>
@@ -175,10 +175,9 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="sys"><a class="header" href="#sys">sys</a></h1>
-<p>The <code>sys</code> table provides shell-like functions and methods for system operations. Most commands mimic standard Unix utilities.</p>
+<p>System and shell helpers.</p>
 <h2 id="exec"><a class="header" href="#exec">exec</a></h2>
-<p>Executes a command with the user’s preferred shell.</p>
-<p>On Linux, this may be <code>zsh</code>, <code>bash</code>, <code>fish</code>, etc… <br>On Windows, this will always target command prompt: <code>cmd</code>.</p>
+<p>Executes a shell command.</p>
 <h3 id="parameters"><a class="header" href="#parameters">Parameters</a></h3>
 <div class="table-wrapper">
 <table>
@@ -186,18 +185,14 @@
 <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td>command</td><td>string</td><td>The command to be ran. Is always wrapped in quotes.</td></tr>
+<tr><td>command</td><td>string</td><td>Command to run. Must not be empty.</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="returns"><a class="header" href="#returns">Returns</a></h3>
 <p>None</p>
-<h3 id="example"><a class="header" href="#example">Example</a></h3>
-<pre><code class="language-lua">sys.exec("echo 'Hello World!'")
-sys.exec("go run main.go")
-</code></pre>
 <h2 id="getenv"><a class="header" href="#getenv">getenv</a></h2>
-<p>Retrieve an environment variable’s value. Similar to <code>echo $VAR</code> in shell.</p>
+<p>Gets an environment variable value.</p>
 <h3 id="parameters-1"><a class="header" href="#parameters-1">Parameters</a></h3>
 <div class="table-wrapper">
 <table>
@@ -205,18 +200,14 @@ sys.exec("go run main.go")
 <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td>key</td><td>string</td><td>The name of the <code>key</code> to retrieve the value of.</td></tr>
+<tr><td>var</td><td>string</td><td>Environment variable name.</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="returns-1"><a class="header" href="#returns-1">Returns</a></h3>
-<p>Returns the <code>key</code>’s value as a string if found;<br>Returns a <code>RuntimeError</code> if not.</p>
-<h3 id="example-1"><a class="header" href="#example-1">Example</a></h3>
-<pre><code class="language-lua">local shell = sys.getenv("SHELL")
-local home = sys.getenv("HOME")
-</code></pre>
+<p>String value, or runtime error if missing.</p>
 <h2 id="setenv"><a class="header" href="#setenv">setenv</a></h2>
-<p>Set an environment variable’s value.</p>
+<p>Sets an environment variable.</p>
 <h3 id="parameters-2"><a class="header" href="#parameters-2">Parameters</a></h3>
 <div class="table-wrapper">
 <table>
@@ -224,19 +215,15 @@ local home = sys.getenv("HOME")
 <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td>var</td><td>string</td><td>The name of the variable to set.</td></tr>
-<tr><td>value</td><td>string</td><td>The value to assign to the variable.</td></tr>
+<tr><td>var</td><td>string</td><td>Environment variable name.</td></tr>
+<tr><td>value</td><td>string</td><td>Value to set.</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="returns-2"><a class="header" href="#returns-2">Returns</a></h3>
 <p>None</p>
-<h3 id="example-2"><a class="header" href="#example-2">Example</a></h3>
-<pre><code class="language-lua">sys.setenv("MY_VAR", "hello")
-sys.setenv("PATH", "/usr/bin:/usr/local/bin")
-</code></pre>
 <h2 id="find"><a class="header" href="#find">find</a></h2>
-<p>Find files or directories by type. Similar to the <code>find</code> command.</p>
+<p>Checks whether a path exists and matches a requested type.</p>
 <h3 id="parameters-3"><a class="header" href="#parameters-3">Parameters</a></h3>
 <div class="table-wrapper">
 <table>
@@ -244,19 +231,33 @@ sys.setenv("PATH", "/usr/bin:/usr/local/bin")
 <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td>what</td><td>number</td><td>Type to search for: <code>sys.FILE</code>, <code>sys.DIRECTORY</code>, or <code>sys.SYMLINK</code></td></tr>
-<tr><td>name</td><td>string</td><td>Pattern or name to search for.</td></tr>
+<tr><td>what</td><td>number</td><td><code>sys.FILE</code>, <code>sys.DIRECTORY</code>, or <code>sys.SYMLINK</code>.</td></tr>
+<tr><td>name</td><td>string</td><td>Path to check.</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="returns-3"><a class="header" href="#returns-3">Returns</a></h3>
-<p>Returns <code>true</code> if found, <code>false</code> otherwise.</p>
-<h3 id="example-3"><a class="header" href="#example-3">Example</a></h3>
-<pre><code class="language-lua">local files = sys.find(sys.FILE, "lush.lua")
-local dirs = sys.find(sys.DIRECTORY, "src")
-</code></pre>
+<p><code>true</code> if path exists and matches type, else <code>false</code>.</p>
 <h2 id="mkdir"><a class="header" href="#mkdir">mkdir</a></h2>
-<p>Create a directory. Similar to <code>mkdir -p</code> (creates parent directories as needed).</p>
+<p>Creates a directory recursively.</p>
+<h2 id="rm"><a class="header" href="#rm">rm</a></h2>
+<p>Removes a file or directory recursively.</p>
+<h2 id="cp"><a class="header" href="#cp">cp</a></h2>
+<p>Copies a file from <code>src</code> to <code>dst</code>.</p>
+<h2 id="mv"><a class="header" href="#mv">mv</a></h2>
+<p>Renames or moves path from <code>src</code> to <code>dst</code>.</p>
+<h2 id="cwd"><a class="header" href="#cwd">cwd</a></h2>
+<p>Returns current working directory as a string.</p>
+<h2 id="envs"><a class="header" href="#envs">envs</a></h2>
+<p>Returns a table of all environment variables.</p>
+<h2 id="os"><a class="header" href="#os">os</a></h2>
+<p>Returns OS name string.</p>
+<h2 id="arch"><a class="header" href="#arch">arch</a></h2>
+<p>Returns architecture string.</p>
+<h2 id="which"><a class="header" href="#which">which</a></h2>
+<p>Returns executable path for <code>command</code>, or runtime error if not found.</p>
+<h2 id="grep"><a class="header" href="#grep">grep</a></h2>
+<p>Regex search over multiline text.</p>
 <h3 id="parameters-4"><a class="header" href="#parameters-4">Parameters</a></h3>
 <div class="table-wrapper">
 <table>
@@ -264,201 +265,28 @@ local dirs = sys.find(sys.DIRECTORY, "src")
 <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td>path</td><td>string</td><td>Path to directory to create.</td></tr>
+<tr><td>pattern</td><td>string</td><td>Regex pattern.</td></tr>
+<tr><td>text</td><td>string</td><td>Input text.</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="returns-4"><a class="header" href="#returns-4">Returns</a></h3>
-<p>None</p>
-<h3 id="example-4"><a class="header" href="#example-4">Example</a></h3>
-<pre><code class="language-lua">sys.mkdir("build/output")
-sys.mkdir("./tmp/nested/dirs")
-</code></pre>
-<h2 id="rm"><a class="header" href="#rm">rm</a></h2>
-<p>Remove a file or directory. Similar to <code>rm -rf</code>.</p>
-<h3 id="parameters-5"><a class="header" href="#parameters-5">Parameters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td>path</td><td>string</td><td>Path to file or directory to remove.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="returns-5"><a class="header" href="#returns-5">Returns</a></h3>
-<p>None</p>
-<h3 id="example-5"><a class="header" href="#example-5">Example</a></h3>
-<pre><code class="language-lua">sys.rm("build")
-sys.rm("output.o")
-</code></pre>
-<h2 id="cp"><a class="header" href="#cp">cp</a></h2>
-<p>Copy a file or directory. Similar to <code>cp -r</code>.</p>
-<h3 id="parameters-6"><a class="header" href="#parameters-6">Parameters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td>src</td><td>string</td><td>Source path.</td></tr>
-<tr><td>dst</td><td>string</td><td>Destination path.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="returns-6"><a class="header" href="#returns-6">Returns</a></h3>
-<p>None</p>
-<h3 id="example-6"><a class="header" href="#example-6">Example</a></h3>
-<pre><code class="language-lua">sys.cp("main.c", "main.c.bak")
-sys.cp("src", "src_backup")
-</code></pre>
-<h2 id="mv"><a class="header" href="#mv">mv</a></h2>
-<p>Move or rename a file or directory. Similar to <code>mv</code>.</p>
-<h3 id="parameters-7"><a class="header" href="#parameters-7">Parameters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td>src</td><td>string</td><td>Source path.</td></tr>
-<tr><td>dst</td><td>string</td><td>Destination path.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="returns-7"><a class="header" href="#returns-7">Returns</a></h3>
-<p>None</p>
-<h3 id="example-7"><a class="header" href="#example-7">Example</a></h3>
-<pre><code class="language-lua">sys.mv("old_name.lua", "new_name.lua")
-sys.mv("./output", "./build/output")
-</code></pre>
-<h2 id="pwd"><a class="header" href="#pwd">pwd</a></h2>
-<p>Get the current working directory. Similar to <code>pwd</code>.</p>
-<h3 id="parameters-8"><a class="header" href="#parameters-8">Parameters</a></h3>
-<p>None</p>
-<h3 id="returns-8"><a class="header" href="#returns-8">Returns</a></h3>
-<p>Returns the current working directory as a string.</p>
-<h3 id="example-8"><a class="header" href="#example-8">Example</a></h3>
-<pre><code class="language-lua">local current = sys.cwd()
-print("Working in: " .. current)
-</code></pre>
-<h2 id="envs"><a class="header" href="#envs">envs</a></h2>
-<p>Get all environment variables as a table.</p>
-<h3 id="parameters-9"><a class="header" href="#parameters-9">Parameters</a></h3>
-<p>None</p>
-<h3 id="returns-9"><a class="header" href="#returns-9">Returns</a></h3>
-<p>Returns a table with all environment variables as key-value pairs.</p>
-<h3 id="example-9"><a class="header" href="#example-9">Example</a></h3>
-<pre><code class="language-lua">local all_env = sys.envs()
-for key, value in pairs(all_env) do
-    print(key .. " = " .. value)
-end
-</code></pre>
-<h2 id="os"><a class="header" href="#os">os</a></h2>
-<p>Get the operating system name.</p>
-<h3 id="parameters-10"><a class="header" href="#parameters-10">Parameters</a></h3>
-<p>None</p>
-<h3 id="returns-10"><a class="header" href="#returns-10">Returns</a></h3>
-<p>Returns the OS as a string: <code>"linux"</code>, <code>"windows"</code>, <code>"macos"</code>, etc.</p>
-<h3 id="example-10"><a class="header" href="#example-10">Example</a></h3>
-<pre><code class="language-lua">local os_name = sys.os()
-if os_name == "windows" then
-    sys.exec("cls")
-else
-    sys.exec("clear")
-end
-</code></pre>
-<h2 id="arch"><a class="header" href="#arch">arch</a></h2>
-<p>Get the system architecture.</p>
-<h3 id="parameters-11"><a class="header" href="#parameters-11">Parameters</a></h3>
-<p>None</p>
-<h3 id="returns-11"><a class="header" href="#returns-11">Returns</a></h3>
-<p>Returns the architecture as a string: <code>"x86_64"</code>, <code>"aarch64"</code>, <code>"x86"</code>, etc.</p>
-<h3 id="example-11"><a class="header" href="#example-11">Example</a></h3>
-<pre><code class="language-lua">local arch = sys.arch()
-print("Running on: " .. arch)
-</code></pre>
-<h2 id="which"><a class="header" href="#which">which</a></h2>
-<p>Find the full path to an executable. Similar to <code>which</code> command.</p>
-<h3 id="parameters-12"><a class="header" href="#parameters-12">Parameters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td>command</td><td>string</td><td>Name of executable.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="returns-12"><a class="header" href="#returns-12">Returns</a></h3>
-<p>Returns the full path to the executable as a string, or <code>RuntimeError</code> if not found.</p>
-<h3 id="example-12"><a class="header" href="#example-12">Example</a></h3>
-<pre><code class="language-lua">local gcc_path = sys.which("gcc")
-local node_path = sys.which("node")
-</code></pre>
-<h2 id="grep"><a class="header" href="#grep">grep</a></h2>
-<p>Search for text patterns in a string. Similar to the <code>grep</code> command.</p>
-<h3 id="parameters-13"><a class="header" href="#parameters-13">Parameters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td>pattern</td><td>string</td><td>Regex pattern to search for.</td></tr>
-<tr><td>text</td><td>string</td><td>Text to search in.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="returns-13"><a class="header" href="#returns-13">Returns</a></h3>
-<p>Returns a table (array) of matching lines.</p>
-<h3 id="example-13"><a class="header" href="#example-13">Example</a></h3>
-<pre><code class="language-lua">local content = sys.read("lush.lua")
-local matches = sys.grep("task", content)
-for i, line in ipairs(matches) do
-    print(line)
-end
-</code></pre>
+<p>Array table of matching lines.</p>
 <h2 id="popen"><a class="header" href="#popen">popen</a></h2>
-<p>Execute a command and capture its output. Similar to piping output.</p>
-<h3 id="parameters-14"><a class="header" href="#parameters-14">Parameters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td>command</td><td>string</td><td>Command to execute.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="returns-14"><a class="header" href="#returns-14">Returns</a></h3>
-<p>Returns the command’s output as a string.</p>
-<h3 id="example-14"><a class="header" href="#example-14">Example</a></h3>
-<pre><code class="language-lua">local version = sys.popen("gcc --version")
-print(version)
-</code></pre>
+<p>Runs command and returns captured stdout as a string.</p>
 <h2 id="constants"><a class="header" href="#constants">Constants</a></h2>
-<h3 id="file"><a class="header" href="#file">FILE</a></h3>
-<p>Constant used with <code>sys.find()</code> to search for files.</p>
-<p>Real Value: <code>0</code></p>
-<pre><code class="language-lua">local files = sys.find(sys.FILE, "*.rs")
-</code></pre>
-<h3 id="directory"><a class="header" href="#directory">DIRECTORY</a></h3>
-<p>Constant used with <code>sys.find()</code> to search for directories.</p>
-<p>Real Value: <code>1</code></p>
-<pre><code class="language-lua">local dirs = sys.find(sys.DIRECTORY, "src")
-</code></pre>
-<h3 id="symlink"><a class="header" href="#symlink">SYMLINK</a></h3>
-<p>Constant used with <code>sys.find()</code> to search for symbolic links.</p>
-<p>Real Value: <code>2</code></p>
-<pre><code class="language-lua">local links = sys.find(sys.SYMLINK, "*")
-</code></pre>
-<h3 id="version"><a class="header" href="#version">VERSION</a></h3>
-<p>The Lush version string. Comes from <code>CARGO_PKG_VERSION</code> environment variable.</p>
-<pre><code class="language-lua">print("Lush version: " .. sys.VERSION)
+<ul>
+<li><code>sys.FILE</code> = <code>0</code></li>
+<li><code>sys.DIRECTORY</code> = <code>1</code></li>
+<li><code>sys.SYMLINK</code> = <code>2</code></li>
+</ul>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<pre><code class="language-lua">local out = sys.popen("echo hello")
+fmt.print("{}", out)
+
+if sys.find(sys.FILE, "lush.lua") then
+  fmt.print("found lush.lua")
+end
 </code></pre>
 
                     </main>

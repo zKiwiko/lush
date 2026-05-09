@@ -29,6 +29,7 @@ function fmt.to_hex(value) end
 ---@return string Result
 function fmt.to_oct(value) end
 
+
 -- json module
 ---@class json
 json = {}
@@ -40,6 +41,7 @@ function json.write_file(...) end
 
 function json.write_string(...) end
 
+
 -- lush module
 ---@class lush
 lush = {}
@@ -49,10 +51,11 @@ function lush.target(...) end
 
 ---@desc Register a new task for Lush to execute.
 ---@param name string Name of the task. This will be used to execute it.
----@param depends? table Optional. Execute other tasks before this one.
+---@param depends? table Execute other tasks before this one.
 ---@param handler function The function to execute for this task.
 ---@overload fun(name: string, handler: function)
 function lush.task(name, depends, handler) end
+
 
 -- string module
 ---@class string
@@ -67,6 +70,7 @@ function string.split(string, seperator) end
 ---@param string string
 ---@return string
 function string.trim(string) end
+
 
 -- sys module
 ---@class sys
@@ -100,15 +104,6 @@ function sys.rm(...) end
 function sys.setenv(...) end
 
 function sys.which(...) end
-
----@desc Constant representing a directory type
-sys.DIRECTORY = 1
-
----@desc Constant representing a file type
-sys.FILE = 0
-
----@desc Constant representing a symbolic link type
-sys.SYMLINK = 2
 
 
 -- build module

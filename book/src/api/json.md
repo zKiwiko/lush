@@ -1,78 +1,58 @@
 # json
 
-Provides different methods for interacting with JSON files or formats.
+Methods for reading and writing JSON from files or strings.
 
 ## read_file
 
-Read a JSON file from the given path.
+Reads a JSON file and converts it to Lua values.
 
 ### Parameters
 
-| Parameter | Type   | Description                         |
-| --------- | ------ | ----------------------------------- |
-| path      | string | The path of the `json` file to open |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| path      | string | Path to JSON file. |
 
 ### Returns
 
-A table that matches the json data
+Lua value (usually a table) representing the parsed JSON.
 
 ### Example
 
-**data.json**
-
-```json
-{
-  "user": {
-    "name": "",
-    "id": 0
-  }
-}
-```
-
-**lush.lua**
-
 ```lua
 local data = json.read_file("data.json")
-fmt.print("Data: {}", data)
+fmt.print("{}", data)
 ```
 
 ## read_string
 
-Reads a supplied string as JSON data.
+Parses a JSON string into Lua values.
 
 ### Parameters
 
-| Parameter | Type   | Description        |
-| --------- | ------ | ------------------ |
-| json_str  | string | The string to read |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| json_str  | string | JSON source string. |
 
 ### Returns
 
-A table that matches the json data
+Lua value (usually a table).
 
 ### Example
 
-**data.json**
-
-```json
-{
-  "user": {
-    "name": "",
-    "id": 0
-  }
-}
+```lua
+local data = json.read_string('{"name":"lush","ok":true}')
 ```
 
 ## write_file
 
-Write a Lua table as JSON data to a file.
+Serializes a Lua value to pretty JSON and writes it to a file.
 
 ### Parameters
 
-| Parameter | Type   | Description                    |
-| --------- | ------ | ------------------------------ |
-| path      | string | The file path to write to      |
-| data      | table  | The data to write to said path |
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| path      | string | Destination file path. |
+| value     | any    | Lua value to serialize. |
 
 ### Returns
 
@@ -81,35 +61,35 @@ None
 ### Example
 
 ```lua
-local data = {
-    user = "",
-    id = 0
-}
-
-json.write_file("./data.json", data)
+json.write_file("./data.json", {
+  user = "aria",
+  id = 1
+})
 ```
 
 ## write_string
 
-Serialize a string with JSON data from a table.
+Serializes a Lua value into a pretty-printed JSON string.
 
 ### Parameters
 
-| Parameter | Type  | Description                    |
-| --------- | ----- | ------------------------------ |
-| data      | table | The data to write to serialize |
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| value     | any  | Lua value to serialize. |
 
 ### Returns
 
-None
+JSON string.
 
 ### Example
 
 ```lua
-local data = {
-    user = "",
-    id = 0
-}
-
-local serialized = json.write_string(data)
+local serialized = json.write_string({ user = "aria", id = 1 })
+fmt.print("{}", serialized)
 ```
+
+## Conversion Notes
+
+- Lua arrays map to JSON arrays only when keys are contiguous numeric indices starting at `1`.
+- Lua tables with string keys map to JSON objects.
+- Unsupported Lua types (like functions/userdata) raise an error.

@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-610e011b.js";
+            window.path_to_searchindex_js = "searchindex-ae252a17.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-16fd47c7.js"></script>
@@ -175,8 +175,11 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p>Lush is a lightweight task runner and pseudo-build tool written in Rust, configured entirely in Lua (JIT). It combines the simplicity of shell scripting with the power and flexibility of a real programming language.</p>
-<p>Think of it as <strong>Make meets Lua</strong> — you get task dependencies, a lua runtime with modern features, and native scripting without the (truly) cryptic syntax or limitations of traditional build systems.</p>
+<p>Lush is a lightweight modernized Lua runtime written in Rust, configured entirely in Lua. It gives the Lua language a modern API to allow its capabilities to soar in potential.
+Its API is still in development, its structure &amp; features may minimally or drastically.</p>
+<p>Lush is - although - intended to be a Lua based task runner. By default, Lush uses <a href="https://luajit.org/">LuaJIT</a> for maximum preformance and its C interop. To use other versions of Lua
+(e.g <code>5.4</code>), you will have to build it with the corresponding <code>mlua</code> flag.</p>
+<h1 id="command-options"><a class="header" href="#command-options">Command options</a></h1>
 <h1 id="building"><a class="header" href="#building">Building</a></h1>
 <pre><code class="language-bash"># Clone the Repo
 git clone https://github.com/zkiwiko/lush
@@ -191,7 +194,7 @@ cargo build --release
 cp ./target/release/lush /usr/bin/lush
 </code></pre>
 <h1 id="quick-examples"><a class="header" href="#quick-examples">Quick Examples</a></h1>
-<h2 id="c-file-compilation"><a class="header" href="#c-file-compilation">C File Compilation</a></h2>
+<h2 id="c-file-compilation-build-api"><a class="header" href="#c-file-compilation-build-api">C File Compilation (Build API)</a></h2>
 <p><strong>main.c</strong></p>
 <pre><code class="language-cpp">#include &lt;stdio.h&gt;
 
@@ -203,7 +206,7 @@ int main(int argc, char* argv[]) {
 <p><strong>lush.lua</strong></p>
 <pre><code class="language-lua">lush.task("build", function()
     local result = build.c()
-                    :compiler(build.COMPILER.GCC) -- Default
+                    :compiler(build.c.GCC) -- Default
                     :optimize(build.c.OPTIMIZE.O2)
                     :files( {"main.c"} )   -- Glob pattern
                     :output("main")

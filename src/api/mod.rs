@@ -4,7 +4,7 @@ pub mod json;
 pub mod lush;
 pub mod math;
 pub mod string;
-pub mod system;
+pub mod sys;
 
 #[macro_export]
 macro_rules! reg {

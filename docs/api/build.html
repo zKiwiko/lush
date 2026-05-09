@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-610e011b.js";
+            window.path_to_searchindex_js = "../searchindex-ae252a17.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-16fd47c7.js"></script>
@@ -175,7 +175,94 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="build"><a class="header" href="#build">build</a></h1>
-<p>TODO</p>
+<p>Build API for C-family targets. <code>build.c</code> is callable and returns a chainable task object.</p>
+<h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
+<pre><code class="language-lua">local result = build.c()
+  :compiler(build.c.GCC)
+  :language(build.c.LANGUAGE.C)
+  :std(build.c.STD.C11)
+  :files({ "src/*.c" })
+  :include_dirs({ "include" })
+  :defines({ "APP_NAME=\"lush\"" })
+  :optimize(build.c.OPTIMIZE.O2)
+  :warnings(build.c.WARNINGS.ALL)
+  :output("app")
+  :run()
+
+fmt.print("{}", result)
+</code></pre>
+<h2 id="chain-methods"><a class="header" href="#chain-methods">Chain Methods</a></h2>
+<p>All methods return the same task object.</p>
+<h3 id="compilercompiler"><a class="header" href="#compilercompiler">compiler(compiler)</a></h3>
+<p>Compiler constant: <code>build.c.GXX</code>, <code>build.c.GCC</code>, <code>build.c.CLANG</code>.</p>
+<h3 id="languagelanguage"><a class="header" href="#languagelanguage">language(language)</a></h3>
+<p>Language constant: <code>build.c.LANGUAGE.C</code>, <code>build.c.LANGUAGE.CPP</code>, <code>build.c.LANGUAGE.OBJC</code>.</p>
+<h3 id="stdstd"><a class="header" href="#stdstd">std(std)</a></h3>
+<p>Language standard constant, e.g. <code>build.c.STD.C11</code>, <code>build.c.STD.CXX20</code>.</p>
+<h3 id="filesfiles"><a class="header" href="#filesfiles">files(files)</a></h3>
+<p>Array of source file paths or glob patterns.</p>
+<h3 id="outputname"><a class="header" href="#outputname">output(name)</a></h3>
+<p>Output binary name. Defaults to <code>a.out</code>.</p>
+<h3 id="optimizelevel"><a class="header" href="#optimizelevel">optimize(level)</a></h3>
+<p>Optimization constant from <code>build.c.OPTIMIZE</code> (<code>O0</code>, <code>O1</code>, <code>O2</code>, <code>O3</code>, <code>OS</code>, <code>OZ</code>).</p>
+<h3 id="debugenabled"><a class="header" href="#debugenabled">debug(enabled)</a></h3>
+<p>Boolean flag for debug symbols (<code>-g</code> in raw mode).</p>
+<h3 id="warningslevel"><a class="header" href="#warningslevel">warnings(level)</a></h3>
+<p>Warning constant from <code>build.c.WARNINGS</code> (<code>NONE</code>, <code>NORMAL</code>, <code>ALL</code>, <code>EXTRA</code>, <code>PEDANTIC</code>).</p>
+<h3 id="include_dirsdirs"><a class="header" href="#include_dirsdirs">include_dirs(dirs)</a></h3>
+<p>Array of include directories.</p>
+<h3 id="definesdefs"><a class="header" href="#definesdefs">defines(defs)</a></h3>
+<p>Array of preprocessor defines (without <code>-D</code>).</p>
+<h3 id="link_libslibs"><a class="header" href="#link_libslibs">link_libs(libs)</a></h3>
+<p>Array of library names (without <code>-l</code>).</p>
+<h3 id="frameworksframeworks"><a class="header" href="#frameworksframeworks">frameworks(frameworks)</a></h3>
+<p>Array of framework names (used for Objective-C style linking).</p>
+<h3 id="flagsflags"><a class="header" href="#flagsflags">flags(flags)</a></h3>
+<p>Array of extra raw compiler flags.</p>
+<h3 id="find_libraryname"><a class="header" href="#find_libraryname">find_library(name)</a></h3>
+<p>Resolves a system library and appends include dirs/lib paths/link libs/flags to the task.</p>
+<h3 id="generatorgen"><a class="header" href="#generatorgen">generator(gen)</a></h3>
+<p>Build generator: <code>build.c.GENERATOR.RAW</code>, <code>build.c.GENERATOR.CMAKE</code>, <code>build.c.GENERATOR.NINJA</code>.</p>
+<h3 id="generate"><a class="header" href="#generate">generate()</a></h3>
+<p>Generates build files for the selected generator (<code>CMAKE</code> or <code>NINJA</code>).</p>
+<h3 id="run"><a class="header" href="#run">run()</a></h3>
+<p>Executes the build and returns a result table.</p>
+<h2 id="result-table"><a class="header" href="#result-table">Result Table</a></h2>
+<p><code>generate()</code> and <code>run()</code> return a table with fields:</p>
+<ul>
+<li><code>success</code> (boolean)</li>
+<li><code>output</code> (string)</li>
+<li><code>error</code> (string or nil)</li>
+<li><code>exit_code</code> (number or nil)</li>
+</ul>
+<h2 id="constants"><a class="header" href="#constants">Constants</a></h2>
+<h3 id="compiler"><a class="header" href="#compiler">Compiler</a></h3>
+<ul>
+<li><code>build.c.GXX</code></li>
+<li><code>build.c.GCC</code></li>
+<li><code>build.c.CLANG</code></li>
+</ul>
+<h3 id="buildcoptimize"><a class="header" href="#buildcoptimize"><code>build.c.OPTIMIZE</code></a></h3>
+<ul>
+<li><code>O0</code>, <code>O1</code>, <code>O2</code>, <code>O3</code>, <code>OS</code>, <code>OZ</code></li>
+</ul>
+<h3 id="buildcstd"><a class="header" href="#buildcstd"><code>build.c.STD</code></a></h3>
+<ul>
+<li>C: <code>C89</code>, <code>C99</code>, <code>C11</code>, <code>C17</code>, <code>C2X</code></li>
+<li>C++: <code>CXX98</code>, <code>CXX03</code>, <code>CXX11</code>, <code>CXX14</code>, <code>CXX17</code>, <code>CXX20</code>, <code>CXX23</code></li>
+</ul>
+<h3 id="buildcwarnings"><a class="header" href="#buildcwarnings"><code>build.c.WARNINGS</code></a></h3>
+<ul>
+<li><code>NONE</code>, <code>NORMAL</code>, <code>ALL</code>, <code>EXTRA</code>, <code>PEDANTIC</code></li>
+</ul>
+<h3 id="buildcgenerator"><a class="header" href="#buildcgenerator"><code>build.c.GENERATOR</code></a></h3>
+<ul>
+<li><code>RAW</code>, <code>CMAKE</code>, <code>NINJA</code></li>
+</ul>
+<h3 id="buildclanguage"><a class="header" href="#buildclanguage"><code>build.c.LANGUAGE</code></a></h3>
+<ul>
+<li><code>C</code>, <code>CPP</code>, <code>OBJC</code></li>
+</ul>
 
                     </main>
 

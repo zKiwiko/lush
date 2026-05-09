@@ -1,4 +1,4 @@
-use crate::reg;
+use crate::{reg, regv};
 use mlua::prelude::*;
 
 fn parse_depends(_lua: &Lua, opts: &mlua::Table) -> LuaResult<Vec<String>> {
@@ -81,7 +81,11 @@ fn task(lua: &Lua, args: mlua::Variadic<mlua::Value>) -> LuaResult<()> {
                 (deps, &args[2])
             }
             mlua::Value::Nil => (vec![], &args[2]),
-            _ => return Err(LuaError::RuntimeError("options must be a table or nil".into())),
+            _ => {
+                return Err(LuaError::RuntimeError(
+                    "options must be a table or nil".into(),
+                ));
+            }
         }
     } else {
         return Err(LuaError::RuntimeError(
@@ -136,6 +140,9 @@ pub fn load(lua: &Lua) -> LuaResult<()> {
             "task" => task,
             "rule" => rule,
             "target" => target,
+        );
+        regv!(lush_module, lua,
+            "VERSION" => env!("CARGO_PKG_VERSION"),
         );
         let _ = lua.globals().set("lush", lush_module);
     }

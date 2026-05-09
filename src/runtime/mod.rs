@@ -1,12 +1,10 @@
 use mlua::prelude::*;
 
+use std::fs;
 use std::path::PathBuf;
-use std::{env, fs};
 
-use crate::api::{build, json, string, system};
+use crate::api::{build, json, string, sys};
 use crate::{reg, regv};
-
-const LUSH_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Runtime {
     lua: Lua,
@@ -198,28 +196,27 @@ impl Runtime {
         // sys module
         if let Ok(sys_module) = self.lua.create_table() {
             reg!(sys_module, self.lua,
-                "exec"   => |_, cmd: String| system::exec(cmd),
-                "getenv" => |_, var: String| system::getenv(var),
-                "setenv" => |_, (var, value): (String, String)| system::setenv(var, value),
-                "find"   => |_, (what, name): (u8, String)| system::find(what, name),
-                "mkdir"  => |_, path: String| system::mkdir(path),
-                "rm"     => |_, path: String| system::rm(path),
-                "cp"     => |_, (src, dst): (String, String)| system::cp(src, dst),
-                "mv"     => |_, (src, dst): (String, String)| system::mv(src, dst),
-                "cwd"    => |_, ()| system::pwd(),
-                "envs"   => |lua, ()| system::envs(lua),
-                "os"     => |_, ()| system::os(),
-                "arch"   => |_, ()| system::arch(),
-                "which"  => |_, command: String| system::which(command),
-                "grep"   => |lua, (pattern, text): (String, String)| system::grep(lua, pattern, text),
-                "popen"  => |_, command: String| system::popen(command),
+                "exec"   => |_, cmd: String| sys::exec(cmd),
+                "getenv" => |_, var: String| sys::getenv(var),
+                "setenv" => |_, (var, value): (String, String)| sys::setenv(var, value),
+                "find"   => |_, (what, name): (u8, String)| sys::find(what, name),
+                "mkdir"  => |_, path: String| sys::mkdir(path),
+                "rm"     => |_, path: String| sys::rm(path),
+                "cp"     => |_, (src, dst): (String, String)| sys::cp(src, dst),
+                "mv"     => |_, (src, dst): (String, String)| sys::mv(src, dst),
+                "cwd"    => |_, ()| sys::pwd(),
+                "envs"   => |lua, ()| sys::envs(lua),
+                "os"     => |_, ()| sys::os(),
+                "arch"   => |_, ()| sys::arch(),
+                "which"  => |_, command: String| sys::which(command),
+                "grep"   => |lua, (pattern, text): (String, String)| sys::grep(lua, pattern, text),
+                "popen"  => |_, command: String| sys::popen(command),
             );
 
             regv!(sys_module, self.lua,
-                "FILE" => system::FILE,
-                "DIRECTORY" => system::DIRECTORY,
-                "SYMLINK" => system::SYMLINK,
-                "VERSION" => LUSH_VERSION
+                "FILE" => sys::FILE,
+                "DIRECTORY" => sys::DIRECTORY,
+                "SYMLINK" => sys::SYMLINK,
             );
 
             let _ = self.lua.globals().set("sys", sys_module);

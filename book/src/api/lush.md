@@ -1,34 +1,64 @@
 # lush
 
-Provides core methods for Lush's functionality.
+Core runtime methods for task registration.
 
 ## task
 
-Create and register a task to be called.
+Registers a named task.
+
+### Signatures
+
+```lua
+lush.task(name, handler)
+lush.task(name, opts, handler)
+```
 
 ### Parameters
 
-| Parameter  | Type               | Description                                                                          |
-| ---------- | ------------------ | ------------------------------------------------------------------------------------ |
-| Name       | string             | Sets the name of the task.                                                           |
-| Depends On | string array       | Provide a list of tasks to be ran _before_ this one does. This parameter is optional |
-| Code       | Function or Method | The code to be ran when the task is called.                                          |
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| name      | string | Task name used on CLI (`lush <name>`). |
+| opts      | table/nil | Optional dependency table. Can be `{"dep1", "dep2"}` or `{ depends = "dep1" }` or `{ depends = {"dep1", "dep2"} }`. |
+| handler   | function | Task body to execute. |
 
 ### Returns
 
-Whatever is returned by the `Code` parameter.
+None
 
 ### Example
 
 ```lua
-
 lush.task("build", function()
-    sys.exec("gcc main.c -o main")
+  sys.exec("gcc main.c -o main")
 end)
 
-lush.task("run", {"build"}, function() -- Runs "build" first, then runs its body.
-    sys.exec("./main)
+lush.task("run", { depends = { "build" } }, function()
+  sys.exec("./main")
 end)
 ```
 
-Run with: `lush build` or `lush run`
+## rule
+
+Placeholder API (currently no-op).
+
+### Signature
+
+```lua
+lush.rule(output, input, handler)
+```
+
+## target
+
+Placeholder API (currently no-op).
+
+### Signature
+
+```lua
+lush.target(files, opts)
+```
+
+## Constants
+
+### VERSION
+
+Current Lush version string.
