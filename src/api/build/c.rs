@@ -386,11 +386,7 @@ pub fn generate_method(lua: &Lua) -> LuaResult<LuaFunction> {
             ));
         }
 
-        let output: Option<String> = match table.get("_output")? {
-            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-            mlua::Value::Nil => None,
-            _ => return Err(LuaError::RuntimeError("Invalid output type".into())),
-        };
+        let output: Option<String> = table.get("_output")?;
 
         let output_name = output.unwrap_or_else(|| "a.out".to_string());
 
@@ -412,18 +408,13 @@ pub fn generate_method(lua: &Lua) -> LuaResult<LuaFunction> {
 
         let lib_paths_table: LuaTable = table.get("_lib_paths")?;
         let lib_paths = table_to_strings(lua, &lib_paths_table)?;
-        let frameworks = match table.get::<mlua::Value>("_frameworks")? {
-            mlua::Value::Table(t) => table_to_strings(lua, &t)?,
-            mlua::Value::Nil => vec![],
-            _ => return Err(LuaError::RuntimeError("Invalid frameworks type".into())),
+        let frameworks = match table.get::<Option<LuaTable>>("_frameworks")? {
+            Some(t) => table_to_strings(lua, &t)?,
+            None => vec![],
         };
         let language: String = table.get("_language")?;
 
-        let optimize: Option<String> = match table.get("_optimize")? {
-            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-            mlua::Value::Nil => None,
-            _ => return Err(LuaError::RuntimeError("Invalid optimize type".into())),
-        };
+        let optimize: Option<String> = table.get("_optimize")?;
 
         let debug: bool = table.get("_debug")?;
 
@@ -481,11 +472,7 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
         let build_system = BuildSystem::from_string(&build_system_str)
             .ok_or_else(|| LuaError::RuntimeError("Invalid build system".into()))?;
 
-        let output: Option<String> = match table.get("_output")? {
-            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-            mlua::Value::Nil => None,
-            _ => return Err(LuaError::RuntimeError("Invalid output type".into())),
-        };
+        let output: Option<String> = table.get("_output")?;
 
         let output_name = output.unwrap_or_else(|| "a.out".to_string());
 
@@ -509,18 +496,13 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
 
             let lib_paths_table: LuaTable = table.get("_lib_paths")?;
             let lib_paths = table_to_strings(lua, &lib_paths_table)?;
-            let frameworks = match table.get::<mlua::Value>("_frameworks")? {
-                mlua::Value::Table(t) => table_to_strings(lua, &t)?,
-                mlua::Value::Nil => vec![],
-                _ => return Err(LuaError::RuntimeError("Invalid frameworks type".into())),
+            let frameworks = match table.get::<Option<LuaTable>>("_frameworks")? {
+                Some(t) => table_to_strings(lua, &t)?,
+                None => vec![],
             };
             let language: String = table.get("_language")?;
 
-            let optimize: Option<String> = match table.get("_optimize")? {
-                mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-                mlua::Value::Nil => None,
-                _ => return Err(LuaError::RuntimeError("Invalid optimize type".into())),
-            };
+            let optimize: Option<String> = table.get("_optimize")?;
 
             let debug: bool = table.get("_debug")?;
 
@@ -579,11 +561,7 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
             return Err(LuaError::RuntimeError("No source files specified".into()));
         }
 
-        let std: Option<String> = match table.get("_std")? {
-            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-            mlua::Value::Nil => None,
-            _ => return Err(LuaError::RuntimeError("Invalid std type".into())),
-        };
+        let std: Option<String> = table.get("_std")?;
         let link_libs_table: LuaTable = table.get("_link_libs")?;
         let link_libs = table_to_strings(lua, &link_libs_table)?;
 
@@ -595,30 +573,17 @@ pub fn run_method(lua: &Lua) -> LuaResult<LuaFunction> {
 
         let flags_table: LuaTable = table.get("_flags")?;
         let flags = table_to_strings(lua, &flags_table)?;
-        let frameworks = match table.get::<mlua::Value>("_frameworks")? {
-            mlua::Value::Table(t) => table_to_strings(lua, &t)?,
-            mlua::Value::Nil => vec![],
-            _ => return Err(LuaError::RuntimeError("Invalid frameworks type".into())),
+        let frameworks = match table.get::<Option<LuaTable>>("_frameworks")? {
+            Some(t) => table_to_strings(lua, &t)?,
+            None => vec![],
         };
         let language: String = table.get("_language")?;
 
-        let output: Option<String> = match table.get("_output")? {
-            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-            mlua::Value::Nil => None,
-            _ => return Err(LuaError::RuntimeError("Invalid output type".into())),
-        };
+        let output: Option<String> = table.get("_output")?;
 
-        let optimize: Option<String> = match table.get("_optimize")? {
-            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-            mlua::Value::Nil => None,
-            _ => return Err(LuaError::RuntimeError("Invalid optimize type".into())),
-        };
+        let optimize: Option<String> = table.get("_optimize")?;
 
-        let warnings: Option<String> = match table.get("_warnings")? {
-            mlua::Value::String(s) => Some(s.to_str()?.to_owned()),
-            mlua::Value::Nil => None,
-            _ => return Err(LuaError::RuntimeError("Invalid warnings type".into())),
-        };
+        let warnings: Option<String> = table.get("_warnings")?;
 
         let debug: bool = table.get("_debug")?;
 

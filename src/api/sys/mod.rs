@@ -194,3 +194,17 @@ pub fn grep(lua: &mlua::Lua, pattern: String, text: String) -> LuaResult<mlua::T
     }
     Ok(result_table)
 }
+
+pub fn sizeof(value: mlua::Value) -> LuaResult<usize> {
+    let size = match value {
+        mlua::Value::String(s) => s.as_bytes().len(),
+        mlua::Value::Integer(i) => std::mem::size_of_val(&i),
+        mlua::Value::Number(n) => std::mem::size_of_val(&n),
+        _ => {
+            return Err(mlua::Error::RuntimeError(
+                "sizeof only accepts string, integer, and number arguments".into(),
+            ));
+        }
+    };
+    Ok(size)
+}

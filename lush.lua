@@ -14,20 +14,3 @@ lush.task("echo", function(...)
     local args = table.concat({ ... }, " ")
     fmt.print("{}", string.trim(args))
 end)
-
-lush.task("c", function(...)
-    fmt.print("Running C task with args: {}", table.concat({ ... }, " "))
-    local result = build.c()
-        :generator(build.c.GENERATOR.NINJA) -- Use Ninja generator
-        :files({ "main.c" })                -- Glob pattern
-        :output("main")
-        :run()
-
-    fmt.print("{}", result)
-
-    if result.success then
-        print(result.output)
-    else
-        print(result.error)
-    end
-end)

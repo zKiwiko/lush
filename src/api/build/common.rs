@@ -68,19 +68,7 @@ impl BuildResult {
 
 /// Helper to convert Lua table values to strings vector
 pub fn table_to_strings(_lua: &Lua, table: &LuaTable) -> LuaResult<Vec<String>> {
-    let mut result = Vec::new();
-    let mut i = 1;
-    loop {
-        match table.get::<mlua::Value>(i)? {
-            mlua::Value::String(s) => {
-                result.push(s.to_str()?.to_owned());
-                i += 1;
-            }
-            mlua::Value::Nil => break,
-            _ => return Err(LuaError::RuntimeError("Expected strings in table".into())),
-        }
-    }
-    Ok(result)
+    table.sequence_values::<String>().collect()
 }
 
 /// Expand glob patterns in a list of file paths

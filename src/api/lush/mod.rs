@@ -6,52 +6,17 @@ fn parse_depends(_lua: &Lua, opts: &mlua::Table) -> LuaResult<Vec<String>> {
     // Or a table with depends key: {depends = "dep1"} or {depends = {"dep1", "dep2"}}
 
     // First check if it has numeric keys (is it an array?)
-    if let Ok(mlua::Value::String(_)) = opts.get::<mlua::Value>(1) {
-        // It's an array of strings
-        let mut deps = vec![];
-        let mut i = 1;
-        loop {
-            match opts.get::<mlua::Value>(i)? {
-                mlua::Value::String(s) => {
-                    deps.push(s.to_str()?.to_owned());
-                    i += 1;
-                }
-                mlua::Value::Nil => break,
-                _ => {
-                    return Err(LuaError::RuntimeError(
-                        "dependencies must be strings".into(),
-                    ));
-                }
-            }
-        }
-        return Ok(deps);
+    if opts.raw_len() > 0 {
+        return opts.sequence_values::<String>().collect();
     }
 
     // Otherwise check for depends key
     match opts.get::<mlua::Value>("depends")? {
         mlua::Value::String(s) => Ok(vec![s.to_str()?.to_owned()]),
-        mlua::Value::Table(t) => {
-            let mut deps = vec![];
-            let mut i = 1;
-            loop {
-                match t.get::<mlua::Value>(i)? {
-                    mlua::Value::String(s) => {
-                        deps.push(s.to_str()?.to_owned());
-                        i += 1;
-                    }
-                    mlua::Value::Nil => break,
-                    _ => {
-                        return Err(LuaError::RuntimeError(
-                            "depends must be a string or array of strings".into(),
-                        ));
-                    }
-                }
-            }
-            Ok(deps)
-        }
+        mlua::Value::Table(dep_table) => dep_table.sequence_values::<String>().collect(),
         mlua::Value::Nil => Ok(vec![]),
         _ => Err(LuaError::RuntimeError(
-            "depends must be a string or array of strings".into(),
+            "'depends' must be a string or array of strings".into(),
         )),
     }
 }

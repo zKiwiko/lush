@@ -3,8 +3,7 @@
 Lush is a lightweight modernized Lua runtime written in Rust, configured entirely in Lua. It gives the Lua language a modern API to allow its capabilities to soar in potential.
 Its API is still in development, its structure & features may minimally or drastically.
 
-Lush is - although - intended to be a Lua based task runner. By default, Lush uses [LuaJIT](https://luajit.org/) for maximum preformance and its C interop. To use other versions of Lua
-(e.g `5.4`), you will have to build it with the corresponding `mlua` flag.
+Lush is - although - intended to be a Lua based task runner. By default, its compiled with the latest version of Lua. As of the time of writing this, ( May 2026 ) the newest version available is Lua 5.5
 
 # Command options
 

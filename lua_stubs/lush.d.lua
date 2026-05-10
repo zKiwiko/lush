@@ -2,6 +2,25 @@
 -- fmt module
 ---@class fmt
 fmt = {}
+---@desc Format bytes into a readable format (e.g., 1024 becomes "1 KB").
+---@param bytes integer|number The number of bytes to format.
+---@return string The formatted byte size as a human-readable string.
+function fmt.bytes(bytes) end
+
+---@desc Pads the input value on the left with the specified fill string until it reaches the desired width. If the input value is already wider than or equal to the specified width, it is returned unchanged. The function accepts a value of any type (string, integer, or number), a target width as an integer, and an optional fill string (defaulting to a single space if not provided). The function returns a new string with the input value padded on the left to achieve the specified width.
+---@param value any
+---@param width integer
+---@param fill? string
+---@return string
+function fmt.pad_left(value, width, fill) end
+
+---@desc Pads the input value on the right with the specified fill string until it reaches the desired width. If the input value is already wider than or equal to the specified width, it is returned unchanged. The function accepts a value of any type (string, integer, or number), a target width as an integer, and an optional fill string (defaulting to a single space if not provided). The function returns a new string with the input value padded on the right to achieve the specified width.
+---@param value any
+---@param width integer
+---@param fill? string
+---@return string
+function fmt.pad_right(value, width, fill) end
+
 ---@desc Joins multiple path segments into a single path string, ensuring that there are no duplicate slashes between segments.
 ---@return string Result The joined path string.
 function fmt.path_join(...) end
@@ -10,9 +29,18 @@ function fmt.path_join(...) end
 ---@return nil
 function fmt.print(...) end
 
+---@desc Prints a formatted string to the console. The first argument is a template string that can contain placeholders in the form of `{}`, and the subsequent arguments are the values to be formatted into the template. The function formats the string by replacing the placeholders with the provided arguments and then prints the resulting string to the console.
+---@return nil
+function fmt.println(...) end
+
 ---@desc Formats a string using a template and a variable number of arguments. The first argument is the template string, and the subsequent arguments are the values to be formatted into the template. The template can contain placeholders in the form of `{}` which will be replaced by the corresponding arguments in order.
 ---@return string Result The formatted string resulting from replacing the placeholders in the template with the provided arguments.
 function fmt.string(...) end
+
+---@desc Format time into a readable format (ms)
+---@param time integer|number The time in milliseconds to format.
+---@return string The formatted time as a human-readable string.
+function fmt.time(time) end
 
 ---@desc Converts a number to its binary representation, prefixed with "0b".
 ---@param value integer|number The number to convert to binary.

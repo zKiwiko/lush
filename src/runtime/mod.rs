@@ -3,7 +3,7 @@ use mlua::prelude::*;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::api::{build, json, string, sys};
+use crate::api::{build, json, math, string, sys};
 use crate::{reg, regv};
 
 pub struct Runtime {
@@ -211,6 +211,7 @@ impl Runtime {
                 "which"  => |_, command: String| sys::which(command),
                 "grep"   => |lua, (pattern, text): (String, String)| sys::grep(lua, pattern, text),
                 "popen"  => |_, command: String| sys::popen(command),
+                "sizeof" => |_, value: mlua::Value| sys::sizeof(value),
             );
 
             regv!(sys_module, self.lua,
@@ -225,13 +226,20 @@ impl Runtime {
         // fmt module
         if let Ok(fmt_module) = self.lua.create_table() {
             reg!(fmt_module, self.lua,
-                "print" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::Print(lua, args),
-                "string" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::String(lua, args),
-                "path_join" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::path_join(lua, args),
+                "print" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::print(lua, args),
+                "println" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::println(lua, args),
+                "string" => |lua, args: mlua::Variadic<mlua::Value>| crate::api::fmt::string(lua, args),
+                "path_join" => |_, args: mlua::Variadic<mlua::Value>| crate::api::fmt::path_join(args),
 
-                "to_hex" => |lua, value: mlua::Value| crate::api::fmt::to_hex(lua, value),
-                "to_bin" => |lua, value: mlua::Value| crate::api::fmt::to_binary(lua, value),
-                "to_oct" => |lua, value: mlua::Value| crate::api::fmt::to_octal(lua, value)
+                "to_hex" => |_, value: f64| crate::api::fmt::to_hex(value),
+                "to_bin" => |_, value: f64| crate::api::fmt::to_binary(value),
+                "to_oct" => |_, value: f64| crate::api::fmt::to_octal(value),
+
+                "time" => |_, value: f64| crate::api::fmt::time(value),
+                "bytes" => |_, value: f64| crate::api::fmt::bytes(value),
+                "pad_left" => |_, (value, width, fill): (mlua::Value, usize, Option<String>)| crate::api::fmt::pad_left((value, width, fill)),
+                "pad_right" => |_, (value, width, fill): (mlua::Value, usize, Option<String>)| crate::api::fmt::pad_right((value, width, fill)),
+
             );
             let _ = self.lua.globals().set("fmt", fmt_module);
         }
@@ -252,6 +260,16 @@ impl Runtime {
             reg!(str_module, self.lua,
                 "trim" => |lua, string: String| string::Trim(lua, string),
                 "split" => |lua, (string, sep): (String, String)| string::Split(lua, (string, sep)),
+            );
+        }
+
+        if let Ok(math_module) = self.lua.globals().get::<mlua::Table>("math") {
+            reg!(math_module, self.lua,
+                "clamp" => |_, (value, min, max): (f64, f64, f64)| math::clamp((value, min, max)),
+                "mean" => |_, values: mlua::Table| math::mean(values),
+                "median" => |_, values: mlua::Table| math::median(values),
+                "lerp" => |_, (start, end, t): (f64, f64, f64)| math::lerp((start, end, t)),
+                "sign" => |_, value: f64| math::sign(value),
             );
         }
 
