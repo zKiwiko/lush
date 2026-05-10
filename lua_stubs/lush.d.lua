@@ -2,7 +2,7 @@
 -- fmt module
 ---@class fmt
 fmt = {}
----@desc Format bytes into a readable format (e.g., 1024 becomes "1 KB").
+---@desc Format bytes into a more readable format (e.g., 1024 becomes "1 KB").
 ---@param bytes integer|number The number of bytes to format.
 ---@return string The formatted byte size as a human-readable string.
 function fmt.bytes(bytes) end
@@ -37,7 +37,7 @@ function fmt.println(...) end
 ---@return string Result The formatted string resulting from replacing the placeholders in the template with the provided arguments.
 function fmt.string(...) end
 
----@desc Format time into a readable format (ms)
+---@desc Format time into a more readable format (ms)
 ---@param time integer|number The time in milliseconds to format.
 ---@return string The formatted time as a human-readable string.
 function fmt.time(time) end
@@ -61,13 +61,26 @@ function fmt.to_oct(value) end
 -- json module
 ---@class json
 json = {}
-function json.read_file(...) end
+---@desc Reads a JSON file from disk and converts it into native Lua values.
+---@param path string Path to the JSON file.
+---@return any Parsed Lua value (typically a table).
+function json.read_file(path) end
 
-function json.read_string(...) end
+---@desc Parses a JSON string and converts it into native Lua values.
+---@param json_str string JSON source string.
+---@return any Parsed Lua value (typically a table).
+function json.read_string(json_str) end
 
-function json.write_file(...) end
+---@desc Serializes a Lua value to pretty-printed JSON and writes it to a file.
+---@param path string Destination file path.
+---@param value any Lua value to serialize.
+---@return nil
+function json.write_file(path, value) end
 
-function json.write_string(...) end
+---@desc Serializes a Lua value into a pretty-printed JSON string.
+---@param value any Lua value to serialize.
+---@return string JSON output string.
+function json.write_string(value) end
 
 
 -- lush module
@@ -83,6 +96,39 @@ function lush.target(...) end
 ---@param handler function The function to execute for this task.
 ---@overload fun(name: string, handler: function)
 function lush.task(name, depends, handler) end
+
+
+-- math module
+---@class math
+math = {}
+---@desc Clamp a number between a minimum and maximum value.
+---@param value integer|number The number to clamp.
+---@param min integer|number The minimum value to clamp to.
+---@param max integer|number The maximum value to clamp to.
+---@return number Clamped_value The clamped value.
+function math.clamp(value, min, max) end
+
+---@desc Linearly interpolates between two values based on a parameter t.
+---@param value integer|number The starting value.
+---@param target integer|number The target value to interpolate towards.
+---@param t integer|number The interpolation factor (0.0 to 1.0). A value of 0.0 will return the starting value, while a value of 1.0 will return the target value.
+---@return number Interpolated_value The result of the linear interpolation between the starting value and the target value based on the interpolation factor t.
+function math.lerp(value, target, t) end
+
+---@desc Calculates the mean (average) of a table of numbers. The function accepts a single argument, which must be a table containing numeric values. It iterates through the values in the table, sums them up, and divides by the count of values to compute the mean. If the table is empty or contains non-numeric values, an error is returned.
+---@param values table A table containing numeric values for which to calculate the mean. The table can be an array-like table (with integer keys starting from 1) or a table with arbitrary keys, as long as the values are numeric (integers or numbers).
+---@return number Mean The calculated mean (average) of the numeric values in the table. The result is returned as a
+function math.mean(values) end
+
+---@desc Calculates the median of a table of numbers. The function accepts a single argument, which must be a table containing numeric values. It collects the values from the table, sorts them, and then computes the median based on whether the count of values is odd or even. If the table is empty or contains non-numeric values, an error is returned.
+---@param values table A table containing numeric values for which to calculate the median. The table can be an array-like table (with integer keys starting from 1) or a table with arbitrary keys, as long as the values are numeric (integers or numbers).
+---@return number Median The calculated median of the numeric values in the table.
+function math.median(values) end
+
+---@desc Returns the sign of a number. The function accepts a single numeric argument and returns -1 if the number is negative, 1 if the number is positive, and 0 if the number is zero.
+---@param value integer|number The number for which to determine the sign. The function accepts any numeric value, including integers and floating-point numbers. The sign is determined based on whether the value is negative, positive, or zero.
+---@return number Sign The sign of the input number. The function returns -1 if the input value is negative, 1 if the input value is positive, and 0 if the input value is zero. The result is returned as a number (integer or floating-point) depending on the input type, but it will always be one of the three possible values: -1, 0, or 1.
+function math.sign(value) end
 
 
 -- string module
@@ -103,35 +149,86 @@ function string.trim(string) end
 -- sys module
 ---@class sys
 sys = {}
+---@desc Returns the CPU architecture name.
+---@return string Architecture name (for example `x86_64` or `aarch64`).
 function sys.arch(...) end
 
-function sys.cp(...) end
+---@desc Copies a file from one path to another.
+---@param src string Source file path.
+---@param dst string Destination file path.
+---@return nil
+function sys.cp(src, dst) end
 
+---@desc Returns the current working directory.
+---@return string Absolute path of the current working directory.
 function sys.cwd(...) end
 
+---@desc Returns a table containing all current environment variables.
+---@return table A key-value table of environment variables.
 function sys.envs(...) end
 
-function sys.exec(...) end
+---@desc Executes a shell command and streams output to the terminal.
+---@param command string Command to run. Must not be empty.
+---@return nil
+function sys.exec(command) end
 
-function sys.find(...) end
+---@desc Checks whether a path exists and matches a requested type.
+---@param what integer One of `sys.FILE`, `sys.DIRECTORY`, or `sys.SYMLINK`.
+---@param name string Path to test.
+---@return boolean True if the path exists and matches the requested type, otherwise false.
+function sys.find(what, name) end
 
-function sys.getenv(...) end
+---@desc Gets the value of an environment variable.
+---@param var string Environment variable name.
+---@return string The environment variable value.
+function sys.getenv(var) end
 
-function sys.grep(...) end
+---@desc Performs regex matching over multiline text and returns matching lines.
+---@param pattern string Regular expression pattern.
+---@param text string Input text to search.
+---@return table Array-like table containing matching lines.
+function sys.grep(pattern, text) end
 
-function sys.mkdir(...) end
+---@desc Creates a directory and any missing parent directories.
+---@param path string Directory path to create.
+---@return nil
+function sys.mkdir(path) end
 
-function sys.mv(...) end
+---@desc Renames or moves a file or directory.
+---@param src string Source path.
+---@param dst string Destination path.
+---@return nil
+function sys.mv(src, dst) end
 
+---@desc Returns the operating system name.
+---@return string OS name (for example `linux`, `macos`, or `windows`).
 function sys.os(...) end
 
-function sys.popen(...) end
+---@desc Executes a shell command and returns captured standard output.
+---@param command string Command to run.
+---@return string Captured standard output.
+function sys.popen(command) end
 
-function sys.rm(...) end
+---@desc Removes a file or directory recursively.
+---@param path string Path to remove.
+---@return nil
+function sys.rm(path) end
 
-function sys.setenv(...) end
+---@desc Sets an environment variable for the current process.
+---@param var string Environment variable name.
+---@param value string Environment variable value.
+---@return nil
+function sys.setenv(var, value) end
 
-function sys.which(...) end
+---@desc Returns the size in bytes of a Lua string or numeric value.
+---@param value any A Lua string, integer, or number.
+---@return integer Size in bytes for the provided value.
+function sys.sizeof(value) end
+
+---@desc Finds an executable in the system PATH.
+---@param command string Executable name to search for.
+---@return string Absolute path to the executable.
+function sys.which(command) end
 
 
 -- build module

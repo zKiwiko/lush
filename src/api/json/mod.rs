@@ -66,7 +66,9 @@ fn lua_to_json(value: mlua::Value) -> LuaResult<serde_json::Value> {
     }
 }
 
-// Read json file from path - return as a native lua table.
+/// @desc Reads a JSON file from disk and converts it into native Lua values.
+/// @param path string Path to the JSON file.
+/// @return any Parsed Lua value (typically a table).
 pub fn read_file(lua: &Lua, path: String) -> LuaResult<mlua::Value> {
     let content = std::fs::read_to_string(path)?;
     let json: serde_json::Value =
@@ -74,7 +76,10 @@ pub fn read_file(lua: &Lua, path: String) -> LuaResult<mlua::Value> {
     json_to_lua(lua, json)
 }
 
-// Write lua table to json file.
+/// @desc Serializes a Lua value to pretty-printed JSON and writes it to a file.
+/// @param path string Destination file path.
+/// @param value any Lua value to serialize.
+/// @return nil
 pub fn write_file(path: String, value: mlua::Value) -> LuaResult<()> {
     let json = lua_to_json(value)?;
     let content =
@@ -83,14 +88,18 @@ pub fn write_file(path: String, value: mlua::Value) -> LuaResult<()> {
     Ok(())
 }
 
-// Read json from string - return as a native lua table.
+/// @desc Parses a JSON string and converts it into native Lua values.
+/// @param json_str string JSON source string.
+/// @return any Parsed Lua value (typically a table).
 pub fn read_string(lua: &Lua, json_str: String) -> LuaResult<mlua::Value> {
     let json: serde_json::Value =
         serde_json::from_str(&json_str).map_err(|e| mlua::Error::external(e.to_string()))?;
     json_to_lua(lua, json)
 }
 
-// Serialize lua value to json string
+/// @desc Serializes a Lua value into a pretty-printed JSON string.
+/// @param value any Lua value to serialize.
+/// @return string JSON output string.
 pub fn write_string(value: mlua::Value) -> LuaResult<String> {
     let json = lua_to_json(value)?;
     serde_json::to_string_pretty(&json).map_err(|e| mlua::Error::external(e.to_string()))
