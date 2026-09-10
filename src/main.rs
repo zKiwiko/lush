@@ -9,8 +9,8 @@ struct Cli {
     // Task to execute
     command: Option<String>,
 
-    // Arguments to pass to the command
-    #[arg(short, long, num_args = 1..)]
+    /// Arguments to pass to the command. Must follow `--`.
+    #[arg(last = true)]
     arguments: Vec<String>,
 
     /// Custom path to a lua file for execution (default: ./lush.lua)
