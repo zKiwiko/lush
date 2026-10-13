@@ -39,49 +39,48 @@ pub fn task(
     Ok(())
 }
 
-fn run_command(command: &str) -> LuaResult<std::process::Output> {
+pub fn exec(_: &Lua, command: String) -> LuaResult<()> {
     if command.trim().is_empty() {
         return Err(LuaError::RuntimeError("command cannot be empty".into()));
     }
 
-    if cfg!(target_os = "windows") {
+    let status = if cfg!(target_os = "windows") {
+        Command::new("cmd").args(["/C", &command]).status()
+    } else {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_owned());
+
+        Command::new(shell).args(["-c", &command]).status()
+    }
+    .map_err(LuaError::external)?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(LuaError::RuntimeError(format!(
+            "command failed with status {}",
+            status.code().unwrap_or(-1)
+        )))
+    }
+}
+/// "Verbose" version of exec that returns the exit code, stdout, and stderr as a tuple.
+pub fn vexec(_: &Lua, command: String) -> LuaResult<(i32, String, String)> {
+    if command.trim().is_empty() {
+        return Err(LuaError::RuntimeError("command cannot be empty".into()));
+    }
+
+    let output = if cfg!(target_os = "windows") {
         std::process::Command::new("cmd")
-            .args(["/C", command])
+            .args(["/C", &command])
             .output()
             .map_err(LuaError::external)
     } else {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_owned());
 
         std::process::Command::new(shell)
-            .args(["-c", command])
+            .args(["-c", &command])
             .output()
             .map_err(LuaError::external)
-    }
-}
-
-pub fn exec(_: &Lua, command: String) -> LuaResult<()> {
-    let output = run_command(&command)?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-
-        let message = if stderr.is_empty() {
-            format!(
-                "command failed with status {}",
-                output.status.code().unwrap_or(-1)
-            )
-        } else {
-            stderr
-        };
-
-        return Err(LuaError::RuntimeError(message));
-    }
-
-    Ok(())
-}
-/// "Verbose" version of exec that returns the exit code, stdout, and stderr as a tuple.
-pub fn vexec(_: &Lua, command: String) -> LuaResult<(i32, String, String)> {
-    let output = run_command(&command)?;
+    }?;
 
     Ok((
         output.status.code().unwrap_or(-1),
