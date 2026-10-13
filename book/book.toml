@@ -1,7 +1,0 @@
-[book]
-title = "Lush Documentation"
-authors = ["Aria | zKiwiko"]
-language = "en"
-
-[build]
-build-dir = "../docs"

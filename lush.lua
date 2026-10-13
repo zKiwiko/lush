@@ -1,16 +1,8 @@
-lush.task("cargo:install", function(where)
-    sys.exec("cp ./target/release/lush " .. where)
+lush.task("build", {}, function(...)
+    lush.exec("cargo build")
 end)
 
-lush.task("cargo:fix", function()
-    sys.exec("cargo fix --bin \"lush\" -p lush")
-end)
-
-lush.task("book:build", function()
-    sys.exec("mdbook build book")
-end)
-
-lush.task("echo", function(...)
+lush.task("echo", {}, function(...)
     local args = table.concat({ ... }, " ")
-    fmt.print("{}", string.trim(args))
+    print(args)
 end)

@@ -1,69 +1,32 @@
-mod api;
-mod config;
+mod cli;
+mod errors;
 mod runtime;
-use clap::Parser;
-
-#[derive(Parser)]
-#[command(name = "Lush", version, about = "A modern lua runtime & task runner", version = env!("CARGO_PKG_VERSION"))]
-struct Cli {
-    // Task to execute
-    command: Option<String>,
-
-    /// Arguments to pass to the command. Must follow `--`.
-    #[arg(last = true)]
-    arguments: Vec<String>,
-
-    /// Custom path to a lua file for execution (default: ./lush.lua)
-    #[arg(short, long)]
-    path: Option<String>,
-
-    /// Run without executing a task.
-    #[arg(long)]
-    dry: bool,
-
-    #[arg(long)]
-    verbose: bool,
-
-    /// Enable LuaJIT's C FFI module (default: false)
-    #[arg(short, long)]
-    c: bool,
-}
 
 fn main() {
-    let cli = Cli::parse();
-    let runtime = runtime::Runtime::new(cli.c);
+    let cli = cli::Cli::new();
+    let runtime = runtime::Runtime::new();
 
-    if cli.verbose {
-        println!("Lush version {}", env!("CARGO_PKG_VERSION"));
-        println!(
-            "Using lua file at: {}",
-            cli.path.as_deref().unwrap_or("./lush.lua")
-        );
-        config::set_verbose();
-    }
+    match cli {
+        Ok(cli) => match runtime {
+            Ok(mut runtime) => {
+                if let Err(err) = runtime.load(cli.path.as_deref().unwrap_or("./lush.lua").as_ref())
+                {
+                    println!("{}", err);
+                    std::process::exit(1);
+                }
 
-    if cli.dry {
-        match runtime.dry_execute(cli.path) {
-            Ok(true) => return,
-            Ok(false) => std::process::exit(1),
+                if let Err(err) = runtime.run(cli.task.as_deref().unwrap(), &cli.arguments) {
+                    println!("{}", err);
+                    std::process::exit(1);
+                }
+            }
             Err(err) => {
-                eprintln!("error: {}", err);
+                println!("{}", err);
                 std::process::exit(1);
             }
+        },
+        Err(err) => {
+            println!("{}", err);
         }
-    }
-
-    if let Some(command) = cli.command {
-        match runtime.execute(&command, &cli.arguments, cli.path) {
-            Ok(true) => (),
-            Ok(false) => std::process::exit(1),
-            Err(err) => {
-                eprintln!("error: {}", err);
-                std::process::exit(1);
-            }
-        }
-    } else {
-        eprintln!("error: no command specified. If this is intentional, add flag '--dry'.");
-        std::process::exit(1);
     }
 }
